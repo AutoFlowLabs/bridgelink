@@ -409,7 +409,7 @@ python -m bridgelink.cli
 ## 📞 Support
 
 - Documentation: https://docs.nativebridge.io/bridgelink
-- Issues: https://github.com/nativebridge/bridgelink/issues
+- Issues: https://github.com/AutoFlowLabs/bridgelink/issues
 - Email: support@nativebridge.io
 
 ---

@@ -19,7 +19,7 @@ setup(
     description="CLI tool to expose Android devices remotely via NativeBridge",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/nativebridge/bridgelink",
+    url="https://github.com/AutoFlowLabs/bridgelink",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -52,8 +52,8 @@ setup(
     include_package_data=True,
     keywords="android adb testing remote-devices nativebridge tunnel bore",
     project_urls={
-        "Bug Reports": "https://github.com/nativebridge/bridgelink/issues",
+        "Bug Reports": "https://github.com/AutoFlowLabs/bridgelink/issues",
         "Documentation": "https://docs.nativebridge.io/bridgelink",
-        "Source": "https://github.com/nativebridge/bridgelink",
+        "Source": "https://github.com/AutoFlowLabs/bridgelink",
     },
 )

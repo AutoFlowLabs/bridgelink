@@ -463,7 +463,7 @@ bore server
 ### For Users
 - **Email**: support@nativebridge.io
 - **Docs**: https://docs.nativebridge.io/bridgelink
-- **Issues**: https://github.com/nativebridge/bridgelink/issues
+- **Issues**: https://github.com/AutoFlowLabs/bridgelink/issues
 - **Discord**: https://discord.gg/nativebridge
 
 ### For Developers

@@ -106,7 +106,7 @@ GitHub Actions triggered
   ```bash
   cd /Users/himanshukukreja/autoflow/bridgelink
   git init
-  git remote add origin https://github.com/nativebridge/bridgelink.git
+  git remote add origin https://github.com/AutoFlowLabs/bridgelink.git
   ```
 
 - [ ] **2. Create Production Branch**
@@ -196,13 +196,13 @@ git push origin production
 
 ```bash
 # GitHub Actions
-https://github.com/nativebridge/bridgelink/actions
+https://github.com/AutoFlowLabs/bridgelink/actions
 
 # PyPI Package
 https://pypi.org/project/bridgelink/
 
 # GitHub Releases
-https://github.com/nativebridge/bridgelink/releases
+https://github.com/AutoFlowLabs/bridgelink/releases
 ```
 
 ---
@@ -309,7 +309,7 @@ twine check dist/*
 
 ### Check Workflow Runs
 ```
-https://github.com/nativebridge/bridgelink/actions
+https://github.com/AutoFlowLabs/bridgelink/actions
 ```
 
 ### Check Package Stats
@@ -318,13 +318,13 @@ https://github.com/nativebridge/bridgelink/actions
 https://pypistats.org/packages/bridgelink
 
 # GitHub traffic
-https://github.com/nativebridge/bridgelink/graphs/traffic
+https://github.com/AutoFlowLabs/bridgelink/graphs/traffic
 ```
 
 ### View Releases
 ```
 # GitHub releases
-https://github.com/nativebridge/bridgelink/releases
+https://github.com/AutoFlowLabs/bridgelink/releases
 
 # PyPI releases
 https://pypi.org/project/bridgelink/#history
@@ -432,9 +432,9 @@ With this CI/CD setup, every push to `production` automatically:
 4. Done! GitHub Actions handles rest
 
 # Check status
-- Actions: https://github.com/nativebridge/bridgelink/actions
+- Actions: https://github.com/AutoFlowLabs/bridgelink/actions
 - PyPI: https://pypi.org/project/bridgelink/
-- Releases: https://github.com/nativebridge/bridgelink/releases
+- Releases: https://github.com/AutoFlowLabs/bridgelink/releases
 ```
 
 ---

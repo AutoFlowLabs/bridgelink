@@ -110,7 +110,7 @@ setup(
     description="CLI tool to expose Android devices remotely via NativeBridge",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/nativebridge/bridgelink",
+    url="https://github.com/AutoFlowLabs/bridgelink",
     packages=find_packages(),
     classifiers=[...],
     python_requires=">=3.8",
@@ -303,7 +303,7 @@ git push origin v0.1.0
 
 #### 7.2 Create GitHub Release
 
-1. Go to https://github.com/nativebridge/bridgelink/releases
+1. Go to https://github.com/AutoFlowLabs/bridgelink/releases
 2. Click "Draft a new release"
 3. Select tag: `v0.1.0`
 4. Release title: `BridgeLink v0.1.0`

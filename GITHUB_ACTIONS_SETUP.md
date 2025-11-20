@@ -70,7 +70,7 @@ BridgeLink uses GitHub Actions for automated testing, building, and publishing t
    ```bash
    cd /Users/himanshukukreja/autoflow/bridgelink
    git init
-   git remote add origin https://github.com/nativebridge/bridgelink.git
+   git remote add origin https://github.com/AutoFlowLabs/bridgelink.git
    ```
 
 2. **Create production branch**:
@@ -435,14 +435,14 @@ git push origin v0.1.0
 
 ### Check Workflow Status
 
-- **Actions tab**: https://github.com/nativebridge/bridgelink/actions
+- **Actions tab**: https://github.com/AutoFlowLabs/bridgelink/actions
 - **Badges**: Add to README for status visibility
 
 ### Check Package Status
 
 - **PyPI**: https://pypi.org/project/bridgelink/
 - **TestPyPI**: https://test.pypi.org/project/bridgelink/
-- **GitHub Releases**: https://github.com/nativebridge/bridgelink/releases
+- **GitHub Releases**: https://github.com/AutoFlowLabs/bridgelink/releases
 
 ### Download Stats
 
@@ -457,7 +457,7 @@ View download statistics:
 Add these to your README.md:
 
 ```markdown
-[![Tests](https://github.com/nativebridge/bridgelink/workflows/Tests/badge.svg)](https://github.com/nativebridge/bridgelink/actions?query=workflow%3ATests)
+[![Tests](https://github.com/AutoFlowLabs/bridgelink/workflows/Tests/badge.svg)](https://github.com/AutoFlowLabs/bridgelink/actions?query=workflow%3ATests)
 [![PyPI](https://img.shields.io/pypi/v/bridgelink.svg)](https://pypi.org/project/bridgelink/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/bridgelink.svg)](https://pypi.org/project/bridgelink/)
 [![Downloads](https://pepy.tech/badge/bridgelink)](https://pepy.tech/project/bridgelink)
@@ -496,6 +496,6 @@ If you encounter issues with GitHub Actions:
 4. Merge to production
 
 # Check release status
-https://github.com/nativebridge/bridgelink/actions
+https://github.com/AutoFlowLabs/bridgelink/actions
 https://pypi.org/project/bridgelink/
 ```
