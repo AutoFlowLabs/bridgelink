@@ -10,6 +10,7 @@ Complete documentation for BridgeLink - NativeBridge CLI tool for remote Android
 - **[Main README](../README.md)** - Quick start and overview
 - **[Quick Start Guide](QUICK_START.md)** - Quick command reference
 - **[Local Testing Guide](LOCAL_TESTING_GUIDE.md)** - Test locally before PyPI release
+- **[Security Guide](SECURITY.md)** - Security best practices ⚠️ **IMPORTANT**
 
 ### Command Guides
 - **[Complete Command Reference](#complete-command-reference)** - All commands with examples

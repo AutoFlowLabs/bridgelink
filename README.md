@@ -122,6 +122,7 @@ bridgelink install --adb-only
 
 ## 📖 Documentation
 
+- **[Security Guide](docs/SECURITY.md)** - Security best practices ⚠️ **READ FIRST**
 - **[Complete Command Reference](docs/README.md)** - All commands with examples
 - **[Deployment Guide](docs/DEPLOYMENT_STEPS.md)** - Backend setup and deployment
 - **[Activate Command](docs/ACTIVATE_COMMAND_GUIDE.md)** - Smart device activation
@@ -165,6 +166,15 @@ BridgeLink stores configuration in `~/.bridgelink/`:
 - **Issues:** https://github.com/AutoFlowLabs/bridgelink/issues
 - **Docs:** https://docs.nativebridge.io/bridgelink
 - **API Key:** https://nativebridge.io/dashboard/api-keys
+
+---
+
+## 🙏 Acknowledgments
+
+- **[bore](https://github.com/ekzhang/bore)** - Fast, simple TCP tunnel
+- **[ADB](https://developer.android.com/studio/command-line/adb)** - Android Debug Bridge by Google
+- **[Click](https://click.palletsprojects.com/)** - Python CLI framework
+- **[FastAPI](https://fastapi.tiangolo.com/)** - Modern Python web framework
 
 ---
 

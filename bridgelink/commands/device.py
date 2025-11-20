@@ -176,7 +176,11 @@ def add_device(ctx, device_serials, api_key):
             click.echo(f"{'✅ SUCCESS'.center(60, '=')}")
             click.echo(f"Device {serial} is now active!")
             click.echo(f"Connect from anywhere:")
-            click.echo(f"  adb connect {tunnel_url}\n")
+            click.echo(f"  adb connect {tunnel_url}")
+            click.echo(f"\n⚠️  SECURITY WARNING:")
+            click.echo(f"   Treat this tunnel URL as a SECRET!")
+            click.echo(f"   Anyone with this URL can connect to your device.")
+            click.echo(f"   Deactivate when not in use: bridgelink devices deactivate {serial}\n")
 
             success_count += 1
 
@@ -433,7 +437,11 @@ def activate_device(device_serial, api_key):
         click.echo(f"{'✅ SUCCESS'.center(60, '=')}")
         click.echo(f"Device {device_serial} is now active!")
         click.echo(f"Connect from anywhere:")
-        click.echo(f"  adb connect {tunnel_url}\n")
+        click.echo(f"  adb connect {tunnel_url}")
+        click.echo(f"\n⚠️  SECURITY WARNING:")
+        click.echo(f"   Treat this tunnel URL as a SECRET!")
+        click.echo(f"   Anyone with this URL can connect to your device.")
+        click.echo(f"   Deactivate when not in use: bridgelink devices deactivate {device_serial}\n")
 
     except Exception as e:
         click.echo(f"❌ Error activating device: {e}", err=True)
