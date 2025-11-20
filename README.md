@@ -84,6 +84,8 @@ bridgelink devices list
 
 # Deactivate device (keeps registration)
 bridgelink devices deactivate <serial>
+bridgelink devices deactivate              # Deactivate ALL active devices (with confirmation)
+bridgelink devices deactivate --all        # Deactivate ALL active devices
 
 # Remove device completely
 bridgelink devices remove <serial>
@@ -98,8 +100,10 @@ bridgelink daemon status
 # View tunnel logs
 bridgelink daemon logs <serial>
 
-# Stop specific tunnel
-bridgelink daemon stop <serial>
+# Stop tunnel(s)
+bridgelink daemon stop <serial>            # Stop specific tunnel
+bridgelink daemon stop                     # Stop ALL tunnels (with confirmation)
+bridgelink daemon stop --all               # Stop ALL tunnels
 
 # Clean up dead tunnels
 bridgelink daemon cleanup

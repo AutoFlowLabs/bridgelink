@@ -80,15 +80,60 @@ def cleanup():
 
 
 @daemon.command(name='stop')
-@click.argument('device_serial')
-def stop_tunnel(device_serial):
+@click.argument('device_serial', required=False)
+@click.option('--all', is_flag=True, help='Stop all running tunnels')
+def stop_tunnel(device_serial, all):
     """
-    Stop a running tunnel for a device
+    Stop running tunnel(s)
 
-    DEVICE_SERIAL: Serial number of the device
+    DEVICE_SERIAL: Serial number of the device (optional if --all is used)
+
+    \b
+    Examples:
+      bridgelink daemon stop 1d752b81        # Stop specific tunnel
+      bridgelink daemon stop --all           # Stop all tunnels
+      bridgelink daemon stop                 # Stop all tunnels (prompts for confirmation)
     """
     tunnel_manager = TunnelManager()
 
+    # If no serial provided and --all not explicitly set, prompt user
+    if not device_serial and not all:
+        if click.confirm("⚠️  No device specified. Stop ALL running tunnels?", default=False):
+            all = True
+        else:
+            click.echo("Operation cancelled.")
+            return
+
+    # Stop all tunnels
+    if all or not device_serial:
+        active_tunnels = tunnel_manager.list_active_tunnels()
+
+        if not active_tunnels:
+            click.echo("No active tunnels running.")
+            return
+
+        click.echo(f"Found {len(active_tunnels)} active tunnel(s)\n")
+
+        success_count = 0
+        for tunnel in active_tunnels:
+            serial = tunnel['device_serial']
+            tunnel_url = tunnel['url']
+
+            click.echo(f"Stopping tunnel for device: {serial}")
+            click.echo(f"  Tunnel URL: {tunnel_url}")
+
+            if tunnel_manager.stop_tunnel(serial):
+                click.echo(f"  ✅ Stopped successfully\n")
+                success_count += 1
+            else:
+                click.echo(f"  ❌ Failed to stop\n", err=True)
+
+        click.echo(f"{'='*60}")
+        click.echo(f"Stopped {success_count}/{len(active_tunnels)} tunnel(s) successfully")
+        click.echo(f"{'='*60}")
+        return
+
+    # Stop single tunnel
     # Check if tunnel exists
     tunnel = tunnel_manager.get_tunnel_info(device_serial)
     if not tunnel:

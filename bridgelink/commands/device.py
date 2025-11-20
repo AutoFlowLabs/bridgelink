@@ -271,13 +271,20 @@ def list_devices(api_key, format):
 
 
 @devices.command(name='deactivate')
-@click.argument('device_serial')
+@click.argument('device_serial', required=False)
 @click.option('--api-key', envvar='NB_API_KEY', help='NativeBridge API key')
-def deactivate_device(device_serial, api_key):
+@click.option('--all', is_flag=True, help='Deactivate all active devices')
+def deactivate_device(device_serial, api_key, all):
     """
-    Deactivate a device and stop its tunnel
+    Deactivate device(s) and stop tunnel(s)
 
-    DEVICE_SERIAL: Serial number of the device to deactivate
+    DEVICE_SERIAL: Serial number of the device to deactivate (optional if --all is used)
+
+    \b
+    Examples:
+      bridgelink devices deactivate 1d752b81        # Deactivate specific device
+      bridgelink devices deactivate --all           # Deactivate all devices
+      bridgelink devices deactivate                 # Deactivate all devices (prompts for confirmation)
     """
 
     if not api_key:
@@ -286,7 +293,59 @@ def deactivate_device(device_serial, api_key):
 
     try:
         api_client = APIClient(api_key=api_key)
+        tunnel_manager = TunnelManager()
 
+        # If no serial provided and --all not explicitly set, prompt user
+        if not device_serial and not all:
+            if click.confirm("⚠️  No device specified. Deactivate ALL active devices?", default=False):
+                all = True
+            else:
+                click.echo("Operation cancelled.")
+                return
+
+        # Deactivate all devices
+        if all or not device_serial:
+            devices = api_client.list_devices()
+
+            if not devices:
+                click.echo("No devices registered.")
+                return
+
+            active_devices = [d for d in devices if d.get('device_state') == 'active']
+
+            if not active_devices:
+                click.echo("No active devices to deactivate.")
+                return
+
+            click.echo(f"Found {len(active_devices)} active device(s)\n")
+
+            success_count = 0
+            for device in active_devices:
+                serial = device['device_serial']
+                click.echo(f"Deactivating device: {serial}")
+
+                try:
+                    # Stop tunnel
+                    stopped = tunnel_manager.stop_tunnel(serial)
+                    if stopped:
+                        click.echo(f"  ✅ Stopped tunnel")
+
+                    # Update device state in backend
+                    api_client.update_device_state(serial, 'inactive')
+                    click.echo(f"  ✅ Updated backend state\n")
+
+                    success_count += 1
+
+                except Exception as e:
+                    click.echo(f"  ❌ Error: {e}\n", err=True)
+                    continue
+
+            click.echo(f"{'='*60}")
+            click.echo(f"Deactivated {success_count}/{len(active_devices)} device(s) successfully")
+            click.echo(f"{'='*60}")
+            return
+
+        # Deactivate single device
         # Get device info
         device = api_client.get_device(device_serial)
 
@@ -299,7 +358,6 @@ def deactivate_device(device_serial, api_key):
             return
 
         # Stop tunnel
-        tunnel_manager = TunnelManager()
         stopped = tunnel_manager.stop_tunnel(device_serial)
 
         if stopped:
