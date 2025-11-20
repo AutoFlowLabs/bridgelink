@@ -4,7 +4,6 @@ Handles downloading and installing the correct bore binary for the platform
 """
 
 import os
-import sys
 import platform
 import subprocess
 import urllib.request
@@ -141,12 +140,11 @@ class BoreInstaller:
             if not self.is_installed():
                 raise Exception("Installation verification failed")
 
-            # Add to PATH reminder for ~/.local/bin
+            # Auto-configure PATH for ~/.local/bin
             if str(self.bore_path).startswith(str(Path.home() / '.local')):
+                self._configure_path()
                 print()
-                print("⚠️  Note: bore was installed to ~/.local/bin")
-                print("   Make sure ~/.local/bin is in your PATH:")
-                print("   export PATH=\"$HOME/.local/bin:$PATH\"")
+                print("✅ bore installed and PATH configured successfully!")
                 print()
 
         except Exception as e:
@@ -154,6 +152,56 @@ class BoreInstaller:
             if temp_path.exists():
                 temp_path.unlink()
             raise e
+
+    def _configure_path(self):
+        """Automatically configure PATH to include ~/.local/bin"""
+        local_bin = str(Path.home() / '.local' / 'bin')
+
+        # Detect shell and add to appropriate config file
+        shell = os.environ.get('SHELL', '').lower()
+
+        if 'zsh' in shell:
+            rc_file = Path.home() / '.zshrc'
+        elif 'bash' in shell:
+            rc_file = Path.home() / '.bashrc'
+        else:
+            # Try to detect from common files
+            if (Path.home() / '.zshrc').exists():
+                rc_file = Path.home() / '.zshrc'
+            elif (Path.home() / '.bashrc').exists():
+                rc_file = Path.home() / '.bashrc'
+            else:
+                # Fallback to .profile
+                rc_file = Path.home() / '.profile'
+
+        path_export = f'export PATH="$HOME/.local/bin:$PATH"'
+
+        # Check if PATH is already configured
+        if rc_file.exists():
+            content = rc_file.read_text()
+            if '.local/bin' in content and 'PATH' in content:
+                print(f"  PATH already configured in {rc_file.name}")
+                return
+
+        # Add PATH export to rc file
+        try:
+            with open(rc_file, 'a') as f:
+                f.write(f'\n# Added by BridgeLink installer\n')
+                f.write(f'{path_export}\n')
+            print(f"  Added to PATH in {rc_file.name}")
+
+            # Also export for current session
+            os.environ['PATH'] = f"{local_bin}:{os.environ.get('PATH', '')}"
+            print(f"  PATH updated for current session")
+
+            print()
+            print("  To apply immediately in new terminals, run:")
+            print(f"  source {rc_file}")
+
+        except Exception as e:
+            print(f"  ⚠️  Could not auto-configure PATH: {e}")
+            print(f"  Please manually add to your shell config:")
+            print(f"  echo '{path_export}' >> {rc_file}")
 
     def get_bore_command(self):
         """Get the bore command to use (path or 'bore' if in PATH)"""

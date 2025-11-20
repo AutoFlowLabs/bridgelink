@@ -4,6 +4,7 @@ Daemon management commands
 
 import click
 from ..daemon.tunnel_manager import TunnelManager
+from ..daemon.background_monitor import get_daemon_instance
 from tabulate import tabulate
 
 
@@ -131,6 +132,18 @@ def stop_tunnel(device_serial, all):
         click.echo(f"{'='*60}")
         click.echo(f"Stopped {success_count}/{len(active_tunnels)} tunnel(s) successfully")
         click.echo(f"{'='*60}")
+
+        # Stop health monitor daemon if no devices remain active
+        remaining_active = tunnel_manager.list_active_tunnels()
+        if not remaining_active:
+            daemon = get_daemon_instance()
+            if daemon.is_running():
+                click.echo("\n🔍 No active devices remaining, stopping health monitor...")
+                if daemon.stop():
+                    click.echo("   ✅ Health monitor stopped")
+                else:
+                    click.echo("   ⚠️  Could not stop health monitor")
+
         return
 
     # Stop single tunnel
@@ -144,5 +157,18 @@ def stop_tunnel(device_serial, all):
     if tunnel_manager.stop_tunnel(device_serial):
         click.echo(f"✅ Stopped tunnel for device {device_serial}")
         click.echo(f"   Tunnel URL was: {tunnel['url']}")
+
+        # Stop health monitor daemon if no devices remain active
+        remaining_active = tunnel_manager.list_active_tunnels()
+        if not remaining_active:
+            daemon = get_daemon_instance()
+            if daemon.is_running():
+                click.echo("\n🔍 No active devices remaining, stopping health monitor...")
+                if daemon.stop():
+                    click.echo("   ✅ Health monitor stopped")
+                else:
+                    click.echo("   ⚠️  Could not stop health monitor")
     else:
         click.echo(f"❌ Failed to stop tunnel for device {device_serial}", err=True)
+
+

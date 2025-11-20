@@ -105,7 +105,7 @@ class TunnelManager:
 
         return None
 
-    def create_tunnel(self, device_serial: str, local_port: int, api_key: str) -> Optional[Dict]:
+    def create_tunnel(self, device_serial: str, local_port: int, api_key: str, device_type: str = "physical") -> Optional[Dict]:
         """
         Create a bore tunnel for a device
 
@@ -113,6 +113,7 @@ class TunnelManager:
             device_serial: Device serial number
             local_port: Local ADB port
             api_key: NativeBridge API key
+            device_type: Device type (physical/emulator) for health monitoring
 
         Returns:
             Dictionary with tunnel info (url, pid) or None if failed
@@ -194,7 +195,8 @@ class TunnelManager:
                 'url': tunnel_url,
                 'local_port': local_port,
                 'log_file': str(log_file),
-                'started_at': time.time()
+                'started_at': time.time(),
+                'device_type': device_type  # Store for health monitoring
             }
             self._save_tunnels(tunnels)
 

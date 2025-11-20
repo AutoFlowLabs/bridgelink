@@ -17,9 +17,11 @@
 - 🤖 **Auto-Installation** - Automatically installs bore tunnel and ADB
 - 💻 **Cross-Platform** - Works on macOS, Linux, and Windows
 - 🔄 **Background Management** - Tunnels run in the background as daemons
+- 🔍 **Automatic Health Monitoring** - Auto-detects and deactivates disconnected devices (5s polling)
 - 📊 **Device Tracking** - Track device state and connection URLs in real-time
 - ✅ **Input Validation** - Validates device serials via ADB before backend calls
 - 🎯 **Smart Activation** - Intelligently reactivates existing devices
+- 🛡️ **Platform-Aware Detection** - Different health checks for physical devices vs emulators
 
 ---
 
@@ -121,6 +123,61 @@ bridgelink install --bore-only
 # Install only ADB
 bridgelink install --adb-only
 ```
+
+---
+
+## 🔍 Automatic Health Monitoring
+
+BridgeLink includes **automatic background health monitoring** that runs seamlessly without any manual intervention.
+
+### How It Works
+
+1. **Auto-Start**: When you add the first device, a background daemon automatically starts
+2. **Continuous Monitoring**: Checks device connectivity every 5 seconds
+3. **Smart Detection**:
+   - **Physical Devices**: Must be in "device" state (strict)
+   - **Emulators**: Can be in "device" or "offline" state (lenient)
+4. **Auto-Cleanup**: When devices disconnect, automatically:
+   - Stops the tunnel
+   - Updates backend state to "inactive"
+   - No stale connections!
+5. **Auto-Stop**: When all devices are deactivated, the daemon automatically stops
+
+### What This Means for You
+
+✅ **No Manual Monitoring** - Everything happens automatically
+✅ **Fast Detection** - Disconnects detected within 5 seconds
+✅ **Clean State** - No stale tunnels or active states
+✅ **Zero Maintenance** - Daemon manages itself
+
+### Example Flow
+
+```bash
+# 1. Add a device
+$ bridgelink devices add emulator-5554
+🔍 Starting background health monitor...
+   ✅ Health monitor started
+💡 Health monitoring is active - disconnected devices will be auto-deactivated
+
+# 2. Device gets physically disconnected
+#    (Background daemon automatically detects and deactivates)
+#    Logs to ~/.bridgelink/monitor.log:
+#    ⚠️  Device emulator-5554 is unhealthy: Device disconnected
+#       Stopping tunnel...
+#       Updating backend state to inactive...
+#    ✅ Device emulator-5554 deactivated successfully
+
+# 3. Deactivate last device
+$ bridgelink devices deactivate emulator-5554
+🔍 No active devices remaining, stopping health monitor...
+   ✅ Health monitor stopped
+```
+
+### Daemon Location
+
+- **PID File**: `~/.bridgelink/monitor.pid`
+- **Log File**: `~/.bridgelink/monitor.log`
+- **State File**: `~/.bridgelink/health_monitor.json`
 
 ---
 
