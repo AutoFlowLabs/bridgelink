@@ -77,3 +77,27 @@ def cleanup():
     tunnel_manager = TunnelManager()
     tunnel_manager.cleanup_dead_tunnels()
     click.echo("✅ Cleaned up dead tunnels")
+
+
+@daemon.command(name='stop')
+@click.argument('device_serial')
+def stop_tunnel(device_serial):
+    """
+    Stop a running tunnel for a device
+
+    DEVICE_SERIAL: Serial number of the device
+    """
+    tunnel_manager = TunnelManager()
+
+    # Check if tunnel exists
+    tunnel = tunnel_manager.get_tunnel_info(device_serial)
+    if not tunnel:
+        click.echo(f"❌ No active tunnel found for device {device_serial}", err=True)
+        return
+
+    # Stop the tunnel
+    if tunnel_manager.stop_tunnel(device_serial):
+        click.echo(f"✅ Stopped tunnel for device {device_serial}")
+        click.echo(f"   Tunnel URL was: {tunnel['url']}")
+    else:
+        click.echo(f"❌ Failed to stop tunnel for device {device_serial}", err=True)

@@ -21,7 +21,7 @@ class TunnelManager:
         self.state_dir = Path.home() / '.bridgelink'
         self.state_dir.mkdir(exist_ok=True)
         self.tunnels_file = self.state_dir / 'tunnels.json'
-        self.bore_server = os.getenv('BORE_SERVER', '3.6.53.225')
+        self.bore_server = os.getenv('BORE_SERVER', 'bridgelink.nativebridge.io')
         self.bore_installer = BoreInstaller()
 
     def _load_tunnels(self) -> Dict:
@@ -80,16 +80,6 @@ class TunnelManager:
 
             if result.returncode != 0:
                 return None
-
-            time.sleep(2)
-
-            # Connect via ADB
-            subprocess.run(
-                ['adb', 'connect', f'localhost:{port}'],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
 
             return port
 

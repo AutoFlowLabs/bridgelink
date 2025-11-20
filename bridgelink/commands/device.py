@@ -115,7 +115,7 @@ def add_device(ctx, device_serials, api_key):
                 'brand': device_info.manufacturer,
                 'model': device_info.model,
                 'android_version': device_info.android_version,
-                'sdk_version': device_info.api_level,
+                'sdk_version': device_info.sdk_version,
             }
 
             device_type = 'emulator' if 'emulator' in serial.lower() else 'physical'
@@ -132,7 +132,7 @@ def add_device(ctx, device_serials, api_key):
             if existing_device:
                 if existing_device['device_state'] == 'active':
                     click.echo(f"✅ Device {serial} is already active")
-                    click.echo(f"   Tunnel URL: {existing_device['device_connection_url']}\n")
+                    click.echo(f"   Tunnel URL: {existing_device['tunnel_url']}\n")
                     success_count += 1
                     continue
                 else:
@@ -212,6 +212,11 @@ def list_devices(api_key, format):
         api_client = APIClient(api_key=api_key)
         devices = api_client.list_devices()
 
+        # Debug: show raw response
+        if os.getenv('DEBUG'):
+            click.echo(f"DEBUG: API returned {len(devices)} devices")
+            click.echo(f"DEBUG: Response: {devices}")
+
         if not devices:
             click.echo("No devices registered yet.")
             click.echo("\nAdd a device:")
@@ -227,13 +232,30 @@ def list_devices(api_key, format):
 
             for device in devices:
                 details = device.get('device_details', {})
+                state = device.get('device_state', 'N/A')
+                tunnel_url = device.get('tunnel_url', 'N/A')
+
+                # Format state with visual indicator
+                if state == 'active':
+                    state_display = '✓ active'
+                elif state == 'inactive':
+                    state_display = '○ inactive'
+                else:
+                    state_display = state
+
+                # Format tunnel URL based on state
+                if state == 'inactive' and tunnel_url != 'N/A':
+                    tunnel_display = f"(last: {tunnel_url})"
+                else:
+                    tunnel_display = tunnel_url if tunnel_url != 'N/A' else '-'
+
                 rows.append([
                     device.get('device_serial', 'N/A'),
                     details.get('model', 'N/A'),
                     details.get('brand', 'N/A'),
                     device.get('device_type', 'N/A'),
-                    device.get('device_state', 'N/A'),
-                    device.get('tunnel_url', 'N/A'),
+                    state_display,
+                    tunnel_display,
                 ])
 
             click.echo(f"\n{tabulate(rows, headers=headers, tablefmt='grid')}\n")
@@ -286,6 +308,135 @@ def deactivate_device(device_serial, api_key):
 
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+@devices.command(name='activate')
+@click.argument('device_serial')
+@click.option('--api-key', envvar='NB_API_KEY', help='NativeBridge API key')
+def activate_device(device_serial, api_key):
+    """
+    Activate an existing device that is registered in NativeBridge
+
+    DEVICE_SERIAL: Serial number of the device to activate
+    """
+
+    if not api_key:
+        click.echo("❌ Error: NativeBridge API key not provided", err=True)
+        click.echo("\nSet API key:")
+        click.echo("  export NB_API_KEY='your-api-key'")
+        sys.exit(1)
+
+    # Validate device via ADB first (before any backend calls)
+    click.echo("🔍 Validating device via ADB...")
+    connected_devices = ADBDeviceManager.list_devices()
+
+    if not connected_devices:
+        click.echo("❌ No Android devices found via ADB", err=True)
+        click.echo("\nMake sure:")
+        click.echo("  1. Device is connected via USB")
+        click.echo("  2. USB debugging is enabled")
+        click.echo("  3. ADB is installed and in PATH")
+        sys.exit(1)
+
+    if device_serial not in connected_devices:
+        click.echo(f"❌ Device '{device_serial}' is not a valid connected device", err=True)
+        click.echo(f"\nConnected devices: {', '.join(connected_devices)}")
+        click.echo("\nMake sure:")
+        click.echo("  1. Device serial is correct")
+        click.echo("  2. Device is connected via USB")
+        click.echo("  3. Run 'adb devices' to verify")
+        sys.exit(1)
+
+    click.echo(f"✅ Device {device_serial} is connected via ADB\n")
+
+    # Initialize API client
+    try:
+        api_client = APIClient(api_key=api_key)
+        user_info = api_client.validate_api_key()
+        click.echo(f"✅ Authenticated as: {user_info['user_email']}\n")
+    except Exception as e:
+        click.echo(f"❌ API key validation failed: {e}", err=True)
+        sys.exit(1)
+
+    # Check if device exists in backend
+    try:
+        click.echo("🔍 Checking device registration in NativeBridge...")
+        existing_device = api_client.get_device(device_serial)
+
+        if not existing_device:
+            click.echo(f"❌ Device {device_serial} is not registered in NativeBridge\n")
+
+            # Ask if user wants to register the device
+            if click.confirm("Would you like to register/add this device now?"):
+                click.echo("\n📝 Registering new device...\n")
+                # Use the add_device command logic
+                ctx = click.get_current_context()
+                ctx.invoke(add_device, device_serials=(device_serial,), api_key=api_key)
+            else:
+                click.echo("\nTo register this device later, run:")
+                click.echo(f"  bridgelink devices add {device_serial}")
+            return
+
+        # Check if already active
+        if existing_device['device_state'] == 'active':
+            click.echo(f"✅ Device {device_serial} is already active")
+            click.echo(f"   Tunnel URL: {existing_device['tunnel_url']}\n")
+            click.echo("To deactivate, run:")
+            click.echo(f"  bridgelink devices deactivate {device_serial}")
+            return
+
+        # Device exists but is inactive - reactivate it
+        click.echo(f"📱 Device {device_serial} found (currently inactive)")
+        click.echo(f"   Model: {existing_device['device_details'].get('model', 'N/A')}")
+        click.echo(f"   Brand: {existing_device['device_details'].get('brand', 'N/A')}")
+        click.echo(f"   Last tunnel: {existing_device.get('tunnel_url', 'N/A')}\n")
+
+        # Initialize tunnel manager
+        tunnel_manager = TunnelManager()
+
+        # Setup ADB TCP mode and get port
+        click.echo("🔧 Setting up ADB TCP mode...")
+        adb_port = tunnel_manager.setup_adb_tcp(device_serial)
+
+        if not adb_port:
+            click.echo(f"❌ Failed to setup ADB TCP mode for {device_serial}", err=True)
+            sys.exit(1)
+
+        click.echo(f"   ADB TCP port: {adb_port}\n")
+
+        # Create bore tunnel
+        click.echo("🌉 Creating bore tunnel...")
+        tunnel_info = tunnel_manager.create_tunnel(device_serial, adb_port, api_key)
+
+        if not tunnel_info:
+            click.echo(f"❌ Failed to create tunnel for {device_serial}", err=True)
+            sys.exit(1)
+
+        tunnel_url = tunnel_info['url']
+        click.echo(f"   Tunnel URL: {tunnel_url}\n")
+
+        # Update device in backend
+        click.echo("☁️  Updating device in NativeBridge...")
+
+        device_data = {
+            'device_serial': device_serial,
+            'device_type': existing_device['device_type'],
+            'device_details': existing_device['device_details'],
+            'tunnel_url': tunnel_url,
+            'device_state': 'active',
+        }
+
+        result = api_client.add_device(device_data)
+        click.echo(f"   ✅ Device activated successfully\n")
+
+        click.echo(f"{'✅ SUCCESS'.center(60, '=')}")
+        click.echo(f"Device {device_serial} is now active!")
+        click.echo(f"Connect from anywhere:")
+        click.echo(f"  adb connect {tunnel_url}\n")
+
+    except Exception as e:
+        click.echo(f"❌ Error activating device: {e}", err=True)
         sys.exit(1)
 
 

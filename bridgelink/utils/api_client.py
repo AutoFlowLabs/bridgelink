@@ -65,7 +65,7 @@ class APIClient:
         Returns:
             API response data
         """
-        url = f"{self.base_url}/v1/devices"
+        url = f"{self.base_url}/v1/bridgelink/devices"
         response = requests.post(
             url,
             headers=self._get_headers(),
@@ -89,7 +89,7 @@ class APIClient:
         Returns:
             API response data
         """
-        url = f"{self.base_url}/v1/devices/{device_serial}/state"
+        url = f"{self.base_url}/v1/bridgelink/devices/{device_serial}/state"
         response = requests.patch(
             url,
             headers=self._get_headers(),
@@ -112,7 +112,7 @@ class APIClient:
         Returns:
             Device data or None if not found
         """
-        url = f"{self.base_url}/v1/devices/{device_serial}"
+        url = f"{self.base_url}/v1/bridgelink/devices/{device_serial}"
         response = requests.get(
             url,
             headers=self._get_headers(),
@@ -134,7 +134,7 @@ class APIClient:
         Returns:
             List of device data dictionaries
         """
-        url = f"{self.base_url}/v1/devices"
+        url = f"{self.base_url}/v1/bridgelink/devices"
         response = requests.get(
             url,
             headers=self._get_headers(),
@@ -142,9 +142,17 @@ class APIClient:
         )
 
         if response.status_code != 200:
-            raise Exception(f"Failed to list devices: {response.text}")
+            raise Exception(
+                f"Failed to list devices (HTTP {response.status_code}): {response.text}"
+            )
 
-        return response.json().get('devices', [])
+        data = response.json()
+
+        # Debug logging if DEBUG env var is set
+        if os.getenv('DEBUG'):
+            print(f"DEBUG API Response: {data}")
+
+        return data.get('devices', [])
 
     def delete_device(self, device_serial: str) -> Dict[str, Any]:
         """
@@ -156,7 +164,7 @@ class APIClient:
         Returns:
             API response data
         """
-        url = f"{self.base_url}/v1/devices/{device_serial}"
+        url = f"{self.base_url}/v1/bridgelink/devices/{device_serial}"
         response = requests.delete(
             url,
             headers=self._get_headers(),
