@@ -126,14 +126,14 @@ bridgelink install --adb-only
 
 ## 📖 Documentation
 
-- **[Security Guide](docs/SECURITY.md)** - Security best practices ⚠️ **READ FIRST**
-- **[Complete Command Reference](docs/README.md)** - All commands with examples
-- **[Deployment Guide](docs/DEPLOYMENT_STEPS.md)** - Backend setup and deployment
-- **[Activate Command](docs/ACTIVATE_COMMAND_GUIDE.md)** - Smart device activation
-- **[Validation Flow](docs/VALIDATION_FLOW.md)** - Security and input validation
-- **[Local Testing](docs/LOCAL_TESTING_GUIDE.md)** - Test before PyPI release
-- **[PyPI Release](docs/PYPI_RELEASE.md)** - Publishing guide
-- **[Quick Start](docs/QUICK_START.md)** - Quick reference
+For complete documentation, visit the [GitHub repository](https://github.com/AutoFlowLabs/bridgelink).
+
+**Key Guides:**
+- **[Security Guide](https://github.com/AutoFlowLabs/bridgelink/blob/main/docs/SECURITY.md)** - Security best practices ⚠️ **READ FIRST**
+- **[Complete Command Reference](https://github.com/AutoFlowLabs/bridgelink/blob/main/docs/README.md)** - All commands with examples
+- **[Deployment Guide](https://github.com/AutoFlowLabs/bridgelink/blob/main/docs/DEPLOYMENT_STEPS.md)** - Backend setup and deployment
+- **[Local Testing](https://github.com/AutoFlowLabs/bridgelink/blob/main/docs/LOCAL_TESTING_GUIDE.md)** - Test before PyPI release
+- **[PyPI Release](https://github.com/AutoFlowLabs/bridgelink/blob/main/docs/PYPI_RELEASE.md)** - Publishing guide
 
 ---
 

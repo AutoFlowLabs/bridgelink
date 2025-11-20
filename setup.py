@@ -53,7 +53,8 @@ setup(
     keywords="android adb testing remote-devices nativebridge tunnel bore",
     project_urls={
         "Bug Reports": "https://github.com/AutoFlowLabs/bridgelink/issues",
-        "Documentation": "https://docs.nativebridge.io/bridgelink",
+        "Documentation": "https://github.com/AutoFlowLabs/bridgelink#readme",
         "Source": "https://github.com/AutoFlowLabs/bridgelink",
+        "Changelog": "https://github.com/AutoFlowLabs/bridgelink/blob/main/CHANGELOG.md",
     },
 )
