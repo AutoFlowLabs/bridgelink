@@ -14,6 +14,7 @@ from ..utils.api_client import APIClient
 from ..utils.adb import ADBDeviceManager
 from ..utils.bore_installer import BoreInstaller
 from ..daemon.tunnel_manager import TunnelManager
+from ..daemon.background_monitor import get_daemon_instance
 
 
 @click.group(name='devices')
@@ -150,7 +151,7 @@ def add_device(ctx, device_serials, api_key):
 
             # Create bore tunnel
             click.echo("🌉 Creating bore tunnel...")
-            tunnel_info = tunnel_manager.create_tunnel(serial, adb_port, api_key)
+            tunnel_info = tunnel_manager.create_tunnel(serial, adb_port, api_key, device_type)
 
             if not tunnel_info:
                 click.echo(f"❌ Failed to create tunnel for {serial}", err=True)
@@ -173,10 +174,20 @@ def add_device(ctx, device_serials, api_key):
             result = api_client.add_device(device_data)
             click.echo(f"   ✅ Device registered successfully\n")
 
+            # Auto-start background health monitor
+            daemon = get_daemon_instance()
+            if not daemon.is_running():
+                click.echo("🔍 Starting background health monitor...")
+                if daemon.start(api_key):
+                    click.echo("   ✅ Health monitor started\n")
+                else:
+                    click.echo("   ⚠️  Could not start health monitor (device will still work)\n")
+
             click.echo(f"{'✅ SUCCESS'.center(60, '=')}")
             click.echo(f"Device {serial} is now active!")
             click.echo(f"Connect from anywhere:")
             click.echo(f"  adb connect {tunnel_url}")
+            click.echo(f"\n💡 Health monitoring is active - disconnected devices will be auto-deactivated")
             click.echo(f"\n⚠️  SECURITY WARNING:")
             click.echo(f"   Treat this tunnel URL as a SECRET!")
             click.echo(f"   Anyone with this URL can connect to your device.")
@@ -343,6 +354,18 @@ def deactivate_device(device_serial, api_key, all):
             click.echo(f"{'='*60}")
             click.echo(f"Deactivated {success_count}/{len(active_devices)} device(s) successfully")
             click.echo(f"{'='*60}")
+
+            # Stop health monitor daemon if no devices remain active
+            remaining_active = tunnel_manager.list_active_tunnels()
+            if not remaining_active:
+                daemon = get_daemon_instance()
+                if daemon.is_running():
+                    click.echo("\n🔍 No active devices remaining, stopping health monitor...")
+                    if daemon.stop():
+                        click.echo("   ✅ Health monitor stopped")
+                    else:
+                        click.echo("   ⚠️  Could not stop health monitor")
+
             return
 
         # Deactivate single device
@@ -367,6 +390,17 @@ def deactivate_device(device_serial, api_key, all):
         api_client.update_device_state(device_serial, 'inactive')
 
         click.echo(f"✅ Device {device_serial} deactivated successfully")
+
+        # Stop health monitor daemon if no devices remain active
+        remaining_active = tunnel_manager.list_active_tunnels()
+        if not remaining_active:
+            daemon = get_daemon_instance()
+            if daemon.is_running():
+                click.echo("\n🔍 No active devices remaining, stopping health monitor...")
+                if daemon.stop():
+                    click.echo("   ✅ Health monitor stopped")
+                else:
+                    click.echo("   ⚠️  Could not stop health monitor")
 
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)
@@ -467,9 +501,12 @@ def activate_device(device_serial, api_key):
 
         click.echo(f"   ADB TCP port: {adb_port}\n")
 
+        # Get device type for health monitoring
+        device_type = existing_device['device_type']
+
         # Create bore tunnel
         click.echo("🌉 Creating bore tunnel...")
-        tunnel_info = tunnel_manager.create_tunnel(device_serial, adb_port, api_key)
+        tunnel_info = tunnel_manager.create_tunnel(device_serial, adb_port, api_key, device_type)
 
         if not tunnel_info:
             click.echo(f"❌ Failed to create tunnel for {device_serial}", err=True)
@@ -483,7 +520,7 @@ def activate_device(device_serial, api_key):
 
         device_data = {
             'device_serial': device_serial,
-            'device_type': existing_device['device_type'],
+            'device_type': device_type,
             'device_details': existing_device['device_details'],
             'tunnel_url': tunnel_url,
             'device_state': 'active',
@@ -492,10 +529,20 @@ def activate_device(device_serial, api_key):
         result = api_client.add_device(device_data)
         click.echo(f"   ✅ Device activated successfully\n")
 
+        # Auto-start background health monitor
+        daemon = get_daemon_instance()
+        if not daemon.is_running():
+            click.echo("🔍 Starting background health monitor...")
+            if daemon.start(api_key):
+                click.echo("   ✅ Health monitor started\n")
+            else:
+                click.echo("   ⚠️  Could not start health monitor (device will still work)\n")
+
         click.echo(f"{'✅ SUCCESS'.center(60, '=')}")
         click.echo(f"Device {device_serial} is now active!")
         click.echo(f"Connect from anywhere:")
         click.echo(f"  adb connect {tunnel_url}")
+        click.echo(f"\n💡 Health monitoring is active - disconnected devices will be auto-deactivated")
         click.echo(f"\n⚠️  SECURITY WARNING:")
         click.echo(f"   Treat this tunnel URL as a SECRET!")
         click.echo(f"   Anyone with this URL can connect to your device.")
