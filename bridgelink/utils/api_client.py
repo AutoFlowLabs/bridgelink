@@ -61,6 +61,7 @@ class APIClient:
                 - device_details: dict (brand, model, etc.)
                 - tunnel_url: str
                 - device_state: str (active/inactive)
+                - auto_activate: bool (optional) - auto-activate on reconnection
 
         Returns:
             API response data
@@ -175,3 +176,47 @@ class APIClient:
             raise Exception(f"Failed to delete device: {response.text}")
 
         return response.json()
+
+    def update_auto_activate(self, device_serial: str, auto_activate: bool) -> Dict[str, Any]:
+        """
+        Update auto-activate preference for a device
+
+        Args:
+            device_serial: Device serial number
+            auto_activate: Enable/disable auto-activation
+
+        Returns:
+            API response data
+        """
+        url = f"{self.base_url}/v1/bridgelink/devices/{device_serial}/auto-activate"
+        response = requests.patch(
+            url,
+            headers=self._get_headers(),
+            json={'auto_activate': auto_activate},
+            timeout=10
+        )
+
+        if response.status_code != 200:
+            raise Exception(f"Failed to update auto-activate: {response.text}")
+
+        return response.json()
+
+    def get_auto_activate_devices(self) -> list:
+        """
+        Get all inactive devices with auto-activate enabled
+
+        Returns:
+            List of device data dictionaries
+        """
+        url = f"{self.base_url}/v1/bridgelink/devices/auto-activate/candidates"
+        response = requests.get(
+            url,
+            headers=self._get_headers(),
+            timeout=10
+        )
+
+        if response.status_code != 200:
+            raise Exception(f"Failed to get auto-activate devices: {response.text}")
+
+        data = response.json()
+        return data.get('devices', [])

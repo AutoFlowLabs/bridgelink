@@ -25,12 +25,12 @@ class DeviceHealthMonitor:
     - Updates device state in backend
     """
 
-    def __init__(self, poll_interval: int = 5, api_key: str = None):
+    def __init__(self, poll_interval: int = 1, api_key: str = None):
         """
         Initialize health monitor
 
         Args:
-            poll_interval: Seconds between health checks (default: 5)
+            poll_interval: Seconds between health checks (default: 1)
             api_key: NativeBridge API key (defaults to NB_API_KEY env var)
         """
         self.poll_interval = poll_interval
@@ -231,7 +231,7 @@ class DeviceHealthMonitor:
         Start continuous monitoring loop
         """
         self._running = True
-        print(f"🚀 Starting device health monitor (poll interval: {self.poll_interval}s)")
+        print(f"🚀 Starting device health monitor (poll interval: {self.poll_interval}s - fast disconnect detection)")
         print(f"   Press Ctrl+C to stop")
 
         try:

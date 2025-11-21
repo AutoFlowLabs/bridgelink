@@ -13,7 +13,7 @@ except FileNotFoundError:
 
 setup(
     name="bridgelink",
-    version="0.1.1",
+    version="0.2.0",
     author="Himanshu Kukreja",
     author_email="kukreja.him@gmail.com",
     description="CLI tool to expose Android devices remotely via NativeBridge",

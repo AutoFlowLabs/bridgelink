@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 .DS_Store
 .claude/
+run_avd.sh
