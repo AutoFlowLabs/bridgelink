@@ -1,4 +1,24 @@
-bridgelink (0.2.0-1) unstable; urgency=medium
+bridgelink (0.2.2-1) jammy; urgency=medium
+
+  * Simplified installation - ADB and bore installed via 'bridgelink setup'
+  * Removed post_install hook from Homebrew formula
+  * Fixed Xcode dependency issues on macOS
+  * Fixed certifi SHA256 mismatch in Homebrew formula
+  * Updated README with bridgelink setup in all installation methods
+
+ -- Himanshu Kukreja <kukreja.him@gmail.com>  Sat, 23 Nov 2024 12:00:00 +0000
+
+bridgelink (0.2.1-1) jammy; urgency=medium
+
+  * Added Homebrew support for macOS
+  * Added PPA support for Ubuntu/Debian
+  * Simplified CI/CD pipeline - PyPI releases only
+  * Added manual release documentation
+  * Added virtual environment setup instructions
+
+ -- Himanshu Kukreja <kukreja.him@gmail.com>  Sat, 23 Nov 2024 10:00:00 +0000
+
+bridgelink (0.2.0-1) jammy; urgency=medium
 
   * New upstream release
   * Added Auto-Activation feature for automatic device reconnection
@@ -9,7 +29,7 @@ bridgelink (0.2.0-1) unstable; urgency=medium
 
  -- Himanshu Kukreja <kukreja.him@gmail.com>  Tue, 21 Jan 2025 00:00:00 +0000
 
-bridgelink (0.1.1-1) unstable; urgency=medium
+bridgelink (0.1.1-1) jammy; urgency=medium
 
   * Added automatic background health monitoring
   * Reduced polling interval to 5 seconds
@@ -17,7 +37,7 @@ bridgelink (0.1.1-1) unstable; urgency=medium
 
  -- Himanshu Kukreja <kukreja.him@gmail.com>  Mon, 20 Jan 2025 00:00:00 +0000
 
-bridgelink (0.1.0-1) unstable; urgency=low
+bridgelink (0.1.0-1) jammy; urgency=low
 
   * Initial release
 
