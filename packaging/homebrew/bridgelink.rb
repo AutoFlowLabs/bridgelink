@@ -7,14 +7,12 @@ class Bridgelink < Formula
 
   desc "CLI tool to expose Android devices remotely via NativeBridge"
   homepage "https://github.com/AutoFlowLabs/bridgelink"
-  url "https://files.pythonhosted.org/packages/source/b/bridgelink/bridgelink-0.2.0.tar.gz"
+  url "https://files.pythonhosted.org/packages/source/b/bridgelink/bridgelink-0.2.2.tar.gz"
   sha256 "PLACEHOLDER_SHA256"  # Update this after PyPI release
   license "MIT"
-  head "https://github.com/AutoFlowLabs/bridgelink.git", branch: "main"
+  head "https://github.com/AutoFlowLabs/bridgelink.git", branch: "production"
 
   depends_on "python@3.11"
-  # Note: ADB (android-platform-tools) is now a cask, install separately:
-  # brew install --cask android-platform-tools
 
   resource "click" do
     url "https://files.pythonhosted.org/packages/source/c/click/click-8.1.7.tar.gz"
@@ -57,18 +55,12 @@ class Bridgelink < Formula
   end
 
   resource "certifi" do
-    url "https://files.pythonhosted.org/packages/source/c/certifi/certifi-2024.2.2.tar.gz"
-    sha256 "0569859131db34f4c8b4d7e56c1cf820e05aeb651f025d0b3d84a0c93d60a52c"
+    url "https://files.pythonhosted.org/packages/source/c/certifi/certifi-2024.8.30.tar.gz"
+    sha256 "bec941d2aa8195e248a60b31ff9f0558284cf01a52591ceda73ea9afffd69fd9"
   end
 
   def install
     virtualenv_install_with_resources
-  end
-
-  def post_install
-    # Install bore tunnel binary
-    ohai "Installing bore tunnel binary..."
-    system "#{bin}/bridgelink", "install", "--bore-only"
   end
 
   def caveats
@@ -76,20 +68,20 @@ class Bridgelink < Formula
       BridgeLink has been installed!
 
       Quick Start:
-        1. Set your API key:
+        1. Run setup to install required tools (ADB, bore):
+           bridgelink setup
+
+        2. Set your API key:
            export NB_API_KEY='your-api-key'
 
-        2. Add a device:
+        3. Add a device:
            bridgelink devices add <device-serial>
 
-        3. Connect remotely:
+        4. Connect remotely:
            adb connect bridgelink.nativebridge.io:<port>
 
       Get your API key: https://nativebridge.io/dashboard/api-keys
       Documentation: https://github.com/AutoFlowLabs/bridgelink
-
-      Note: If ADB is not installed, run:
-        brew install --cask android-platform-tools
     EOS
   end
 
