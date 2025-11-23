@@ -38,9 +38,10 @@ brew tap AutoFlowLabs/tap
 
 # Install BridgeLink
 brew install bridgelink
-```
 
-This automatically installs all dependencies including Python and bore tunnel.
+# Run setup to install required tools (ADB, bore)
+bridgelink setup
+```
 
 ---
 
@@ -48,14 +49,15 @@ This automatically installs all dependencies including Python and bore tunnel.
 
 ```bash
 # Add the BridgeLink repository
-sudo add-apt-repository ppa:autoflowlabs/bridgelink
+sudo add-apt-repository ppa:himanshukukreja/bridgelink
 sudo apt update
 
 # Install BridgeLink
 sudo apt install bridgelink
-```
 
-This automatically installs all dependencies including ADB.
+# Run setup to install required tools (ADB, bore)
+bridgelink setup
+```
 
 ---
 
@@ -119,13 +121,13 @@ bridgelink-env\Scripts\Activate.ps1
 pip install bridgelink
 ```
 
-#### Step 3: Install Dependencies (pip only)
+#### Step 3: Run Setup
 
 ```bash
-bridgelink install
+bridgelink setup
 ```
 
-This automatically installs:
+This automatically installs required tools:
 - **bore** - Tunnel binary for your platform (macOS, Linux, Windows)
 - **ADB** - Android Debug Bridge from Google
 
@@ -219,10 +221,13 @@ bridgelink daemon stop --all               # Stop ALL tunnels
 bridgelink daemon cleanup
 ```
 
-### Installation
+### Setup & Installation
 
 ```bash
-# Install both bore and ADB
+# Run interactive setup (installs bore, ADB, configures API key)
+bridgelink setup
+
+# Install both bore and ADB (non-interactive)
 bridgelink install
 
 # Install only bore

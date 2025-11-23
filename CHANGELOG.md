@@ -5,13 +5,34 @@ All notable changes to BridgeLink will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2024-11-23
+
+### Changed - 🔧 Simplified Installation
+- **Deferred Tool Installation**: ADB and bore are no longer installed during package installation
+  - Tools are now installed via `bridgelink setup` command
+  - Reduces installation complexity and Homebrew/PPA build issues
+  - Users have explicit control over when tools are installed
+- **Homebrew Formula Simplified**: Removed `post_install` hook
+  - No longer auto-installs bore during `brew install`
+  - Users run `bridgelink setup` after installation
+  - Fixes Xcode dependency issues on macOS
+- **Updated Quick Start**: All installation methods now include `bridgelink setup` step
+
+### Fixed
+- Fixed Homebrew installation failing due to Xcode version check
+- Fixed `certifi` SHA256 mismatch in Homebrew formula
+- Fixed PPA name in README (now `ppa:himanshukukreja/bridgelink`)
+
+### Documentation
+- Updated README with `bridgelink setup` in all installation methods
+- Clarified that `bridgelink setup` installs ADB and bore
+
 ## [0.2.1] - 2024-11-23
 
-### Added - 📦 Multi-Platform Distribution
+### Added - Multi-Platform Distribution
 - **Homebrew Support (macOS)**: Install via `brew install AutoFlowLabs/tap/bridgelink`
   - Created Homebrew formula with all Python dependencies
   - Set up AutoFlowLabs/homebrew-tap repository
-  - Automatic post-install bore binary installation
 - **PPA Support (Ubuntu/Debian)**: Install via `sudo add-apt-repository ppa:himanshukukreja/bridgelink`
   - Created Debian package configuration
   - Set up Launchpad PPA for automated builds
@@ -27,8 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed automated Homebrew/PPA jobs (now manual for reliability)
   - Cleaner, faster release workflow
   - Manual steps documented in `docs/MANUAL_RELEASE.md`
-- **Updated Homebrew Formula**: Fixed `android-platform-tools` dependency
-  - Now a cask instead of formula: `brew install --cask android-platform-tools`
 
 ### Documentation
 - Added `docs/MANUAL_RELEASE.md` - Complete manual release guide
@@ -151,6 +170,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Local testing guide (LOCAL_TESTING_GUIDE.md)
 - PyPI release guide (PYPI_RELEASE.md)
 
+[0.2.2]: https://github.com/AutoFlowLabs/bridgelink/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/AutoFlowLabs/bridgelink/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/AutoFlowLabs/bridgelink/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/AutoFlowLabs/bridgelink/compare/v0.1.0...v0.1.1
