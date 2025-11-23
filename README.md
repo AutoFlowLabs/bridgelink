@@ -45,25 +45,9 @@ bridgelink setup
 
 ---
 
-### Option 2: APT (Debian/Ubuntu) - Recommended for Linux users
+### Option 2: pip (Linux, Windows, macOS)
 
-```bash
-# Add the BridgeLink repository
-sudo add-apt-repository ppa:himanshukukreja/bridgelink
-sudo apt update
-
-# Install BridgeLink
-sudo apt install bridgelink
-
-# Run setup to install required tools (ADB, bore)
-bridgelink setup
-```
-
----
-
-### Option 3: pip (All platforms) - For Python developers
-
-#### Step 1: Create Virtual Environment (Recommended)
+#### Method A: Virtual Environment (Recommended)
 
 <details>
 <summary><b>macOS / Linux</b></summary>
@@ -75,7 +59,11 @@ python3 -m venv bridgelink-env
 # Activate virtual environment
 source bridgelink-env/bin/activate
 
-# Your prompt should now show (bridgelink-env)
+# Install BridgeLink
+pip install bridgelink
+
+# Run setup
+bridgelink setup
 ```
 
 </details>
@@ -90,7 +78,11 @@ python -m venv bridgelink-env
 # Activate virtual environment
 bridgelink-env\Scripts\activate.bat
 
-# Your prompt should now show (bridgelink-env)
+# Install BridgeLink
+pip install bridgelink
+
+# Run setup
+bridgelink setup
 ```
 
 </details>
@@ -108,21 +100,32 @@ bridgelink-env\Scripts\Activate.ps1
 # If you get an execution policy error, run:
 # Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
-# Your prompt should now show (bridgelink-env)
+# Install BridgeLink
+pip install bridgelink
+
+# Run setup
+bridgelink setup
 ```
 
 </details>
 
 > **Note:** Remember to activate the virtual environment each time you open a new terminal session before using BridgeLink.
 
-#### Step 2: Install BridgeLink
+#### Method B: Global Installation
+
+If you prefer to install globally (not recommended due to potential dependency conflicts):
 
 ```bash
+# Linux/macOS
+pip install bridgelink
+# Or with sudo if permission denied:
+sudo pip install bridgelink
+
+# Windows (run terminal as Administrator)
 pip install bridgelink
 ```
 
-#### Step 3: Run Setup
-
+After installation, run setup:
 ```bash
 bridgelink setup
 ```
