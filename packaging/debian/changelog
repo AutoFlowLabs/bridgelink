@@ -1,0 +1,24 @@
+bridgelink (0.2.0-1) unstable; urgency=medium
+
+  * New upstream release
+  * Added Auto-Activation feature for automatic device reconnection
+  * Improved polling interval from 5s to 1s for faster detection
+  * Added connection monitor daemon for auto-activation
+  * Enhanced device listing with auto-activation status
+  * Added comprehensive documentation
+
+ -- Himanshu Kukreja <kukreja.him@gmail.com>  Tue, 21 Jan 2025 00:00:00 +0000
+
+bridgelink (0.1.1-1) unstable; urgency=medium
+
+  * Added automatic background health monitoring
+  * Reduced polling interval to 5 seconds
+  * Platform-aware health checks for emulators vs physical devices
+
+ -- Himanshu Kukreja <kukreja.him@gmail.com>  Mon, 20 Jan 2025 00:00:00 +0000
+
+bridgelink (0.1.0-1) unstable; urgency=low
+
+  * Initial release
+
+ -- Himanshu Kukreja <kukreja.him@gmail.com>  Sun, 19 Jan 2025 00:00:00 +0000
