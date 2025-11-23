@@ -1,0 +1,45 @@
+Source: bridgelink
+Section: devel
+Priority: optional
+Maintainer: Himanshu Kukreja <kukreja.him@gmail.com>
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               python3-all,
+               python3-setuptools,
+               python3-click,
+               python3-requests,
+               python3-psutil,
+               python3-colorama,
+               python3-tabulate
+Standards-Version: 4.6.0
+Homepage: https://github.com/AutoFlowLabs/bridgelink
+Vcs-Browser: https://github.com/AutoFlowLabs/bridgelink
+Vcs-Git: https://github.com/AutoFlowLabs/bridgelink.git
+Rules-Requires-Root: no
+
+Package: bridgelink
+Architecture: all
+Depends: ${python3:Depends},
+         ${misc:Depends},
+         python3-click,
+         python3-requests,
+         python3-psutil,
+         python3-colorama,
+         python3-tabulate,
+         adb
+Recommends: android-sdk-platform-tools
+Description: CLI tool to expose Android devices remotely via NativeBridge
+ BridgeLink is a production-ready CLI tool that exposes your local Android
+ devices remotely via the NativeBridge platform, making them accessible
+ from anywhere with secure tunneling powered by bore.
+ .
+ Features:
+  - One-Command Setup
+  - Multi-Device Support
+  - Secure Tunneling with API key authentication
+  - Remote Access from anywhere
+  - Auto-Installation of bore tunnel and ADB
+  - Cross-Platform support (macOS, Linux, Windows)
+  - Background tunnel management
+  - Automatic Health Monitoring
+  - Auto-Activation on device reconnection

@@ -193,7 +193,7 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Download build artifacts
+    - name: Download PyPI artifacts
       uses: actions/download-artifact@v4
       with:
         name: dist-packages
@@ -254,7 +254,8 @@ jobs:
 
   notify:
     name: Notify Success
-    needs: [create-release]
+    needs: create-release
+    if: always()
     runs-on: ubuntu-latest
 
     steps:
@@ -270,5 +271,14 @@ jobs:
     - name: Send success notification
       run: |
         echo "✅ BridgeLink v${{ steps.get_version.outputs.version }} published successfully!"
-        echo "📦 PyPI: https://pypi.org/project/bridgelink/${{ steps.get_version.outputs.version }}/"
-        echo "🏷️ GitHub Release: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.get_version.outputs.version }}"
+        echo ""
+        echo "📦 Installation:"
+        echo "   pip install bridgelink"
+        echo ""
+        echo "🔗 Links:"
+        echo "   PyPI: https://pypi.org/project/bridgelink/${{ steps.get_version.outputs.version }}/"
+        echo "   GitHub Release: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.get_version.outputs.version }}"
+        echo ""
+        echo "📝 Manual Steps Required:"
+        echo "   - Homebrew: See docs/MANUAL_RELEASE.md"
+        echo "   - PPA (Ubuntu): See docs/MANUAL_RELEASE.md"

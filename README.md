@@ -26,15 +26,100 @@
 
 ---
 
-## 🚀 Quick Start
+## 📦 Installation
 
-### 1. Install BridgeLink
+Choose your preferred installation method:
+
+### Option 1: Homebrew (macOS) - Recommended for Mac users
+
+```bash
+# Add the BridgeLink tap
+brew tap AutoFlowLabs/tap
+
+# Install BridgeLink
+brew install bridgelink
+```
+
+This automatically installs all dependencies including Python and bore tunnel.
+
+---
+
+### Option 2: APT (Debian/Ubuntu) - Recommended for Linux users
+
+```bash
+# Add the BridgeLink repository
+sudo add-apt-repository ppa:autoflowlabs/bridgelink
+sudo apt update
+
+# Install BridgeLink
+sudo apt install bridgelink
+```
+
+This automatically installs all dependencies including ADB.
+
+---
+
+### Option 3: pip (All platforms) - For Python developers
+
+#### Step 1: Create Virtual Environment (Recommended)
+
+<details>
+<summary><b>macOS / Linux</b></summary>
+
+```bash
+# Create virtual environment
+python3 -m venv bridgelink-env
+
+# Activate virtual environment
+source bridgelink-env/bin/activate
+
+# Your prompt should now show (bridgelink-env)
+```
+
+</details>
+
+<details>
+<summary><b>Windows (Command Prompt)</b></summary>
+
+```cmd
+# Create virtual environment
+python -m venv bridgelink-env
+
+# Activate virtual environment
+bridgelink-env\Scripts\activate.bat
+
+# Your prompt should now show (bridgelink-env)
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+# Create virtual environment
+python -m venv bridgelink-env
+
+# Activate virtual environment
+bridgelink-env\Scripts\Activate.ps1
+
+# If you get an execution policy error, run:
+# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Your prompt should now show (bridgelink-env)
+```
+
+</details>
+
+> **Note:** Remember to activate the virtual environment each time you open a new terminal session before using BridgeLink.
+
+#### Step 2: Install BridgeLink
 
 ```bash
 pip install bridgelink
 ```
 
-### 2. Install Dependencies
+#### Step 3: Install Dependencies (pip only)
 
 ```bash
 bridgelink install
@@ -44,25 +129,42 @@ This automatically installs:
 - **bore** - Tunnel binary for your platform (macOS, Linux, Windows)
 - **ADB** - Android Debug Bridge from Google
 
-### 3. Set API Key
+---
+
+## 🚀 Quick Start
+
+After installation, follow these steps:
+
+### 1. Set API Key
 
 Get your API key from [NativeBridge Dashboard](https://nativebridge.io/dashboard/api-keys):
 
+**macOS / Linux:**
 ```bash
 export NB_API_KEY='Nb-kNGB.your-api-key-here'
 ```
 
-### 4. Connect Your Device
+**Windows (Command Prompt):**
+```cmd
+set NB_API_KEY=Nb-kNGB.your-api-key-here
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:NB_API_KEY="Nb-kNGB.your-api-key-here"
+```
+
+### 2. Connect Your Device
 
 Connect your Android device via USB and enable USB debugging.
 
-### 5. Add Device
+### 3. Add Device
 
 ```bash
 bridgelink devices add <device-serial>
 ```
 
-### 6. Access Remotely
+### 4. Access Remotely
 
 ```bash
 adb connect bridgelink.nativebridge.io:15750

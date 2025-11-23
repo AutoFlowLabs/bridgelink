@@ -5,6 +5,37 @@ All notable changes to BridgeLink will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2024-11-23
+
+### Added - 📦 Multi-Platform Distribution
+- **Homebrew Support (macOS)**: Install via `brew install AutoFlowLabs/tap/bridgelink`
+  - Created Homebrew formula with all Python dependencies
+  - Set up AutoFlowLabs/homebrew-tap repository
+  - Automatic post-install bore binary installation
+- **PPA Support (Ubuntu/Debian)**: Install via `sudo add-apt-repository ppa:himanshukukreja/bridgelink`
+  - Created Debian package configuration
+  - Set up Launchpad PPA for automated builds
+  - Supports Ubuntu Jammy (22.04) and later
+- **Manual Release Documentation**: Comprehensive guide at `docs/MANUAL_RELEASE.md`
+  - Step-by-step Homebrew release instructions
+  - Step-by-step PPA release instructions
+  - Troubleshooting guide for common issues
+  - Quick reference scripts for faster releases
+
+### Changed
+- **Simplified CI/CD Pipeline**: `release.yml` now focuses on PyPI releases only
+  - Removed automated Homebrew/PPA jobs (now manual for reliability)
+  - Cleaner, faster release workflow
+  - Manual steps documented in `docs/MANUAL_RELEASE.md`
+- **Updated Homebrew Formula**: Fixed `android-platform-tools` dependency
+  - Now a cask instead of formula: `brew install --cask android-platform-tools`
+
+### Documentation
+- Added `docs/MANUAL_RELEASE.md` - Complete manual release guide
+- Updated `packaging/README.md` with GitHub secrets documentation
+- Updated Homebrew tap README with installation instructions
+- Added virtual environment setup instructions for all platforms
+
 ## [0.2.0] - 2025-01-21
 
 ### Added - 🔄 Auto-Activation Feature
@@ -120,6 +151,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Local testing guide (LOCAL_TESTING_GUIDE.md)
 - PyPI release guide (PYPI_RELEASE.md)
 
+[0.2.1]: https://github.com/AutoFlowLabs/bridgelink/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/AutoFlowLabs/bridgelink/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/AutoFlowLabs/bridgelink/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/AutoFlowLabs/bridgelink/releases/tag/v0.1.0
