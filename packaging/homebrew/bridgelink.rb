@@ -57,8 +57,8 @@ class Bridgelink < Formula
   end
 
   resource "certifi" do
-    url "https://files.pythonhosted.org/packages/source/c/certifi/certifi-2024.2.2.tar.gz"
-    sha256 "0569859131db34f4c8b4d7e56c1cf820e05aeb651f025d0b3d84a0c93d60a52c"
+    url "https://files.pythonhosted.org/packages/source/c/certifi/certifi-2024.8.30.tar.gz"
+    sha256 "bec941d2aa8195e248a60b31ff9f0558284cf01a52591ceda73ea9afffd69fd9"
   end
 
   def install
