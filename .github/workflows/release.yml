@@ -182,7 +182,7 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    needs: [publish-pypi, build-debian]
+    needs: publish-pypi
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -198,13 +198,6 @@ jobs:
       with:
         name: dist-packages
         path: dist/
-
-    - name: Download Debian package
-      uses: actions/download-artifact@v4
-      with:
-        name: debian-package
-        path: debian/
-      continue-on-error: true
 
     - name: Get version from package
       id: get_version
@@ -254,248 +247,14 @@ jobs:
         files: |
           dist/*.whl
           dist/*.tar.gz
-          debian/*.deb
         draft: false
         prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Update Homebrew tap after PyPI release
-  update-homebrew:
-    name: Update Homebrew Tap
-    needs: publish-pypi
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: dist-packages
-        path: dist/
-
-    - name: Calculate SHA256 and version
-      id: package_info
-      run: |
-        SHA=$(shasum -a 256 dist/*.tar.gz | awk '{print $1}')
-        echo "sha256=$SHA" >> $GITHUB_OUTPUT
-        VERSION=$(python -c "from bridgelink import __version__; print(__version__)")
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-    - name: Update Homebrew formula
-      env:
-        GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-      run: |
-        if [ -z "$GH_TOKEN" ]; then
-          echo "⚠️ HOMEBREW_TAP_TOKEN not set, skipping Homebrew update"
-          exit 0
-        fi
-
-        # Clone the tap repository
-        git clone https://x-access-token:${GH_TOKEN}@github.com/AutoFlowLabs/homebrew-tap.git || {
-          echo "⚠️ Failed to clone homebrew-tap repository"
-          exit 0
-        }
-        cd homebrew-tap
-
-        # Check if formula exists
-        if [ ! -f Formula/bridgelink.rb ]; then
-          echo "⚠️ Formula not found, copying from source"
-          mkdir -p Formula
-          cp ../packaging/homebrew/bridgelink.rb Formula/
-        fi
-
-        # Update the formula with new version and SHA256
-        sed -i "s|url \".*\"|url \"https://files.pythonhosted.org/packages/source/b/bridgelink/bridgelink-${{ steps.package_info.outputs.version }}.tar.gz\"|" Formula/bridgelink.rb
-        sed -i "s|sha256 \".*\"|sha256 \"${{ steps.package_info.outputs.sha256 }}\"|" Formula/bridgelink.rb
-
-        # Commit and push
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add Formula/bridgelink.rb
-        git diff --staged --quiet || {
-          git commit -m "Update bridgelink to v${{ steps.package_info.outputs.version }}"
-          git push
-          echo "✅ Homebrew formula updated to v${{ steps.package_info.outputs.version }}"
-        }
-      continue-on-error: true
-
-  # Build Debian package
-  build-debian:
-    name: Build Debian Package
-    needs: publish-pypi
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Install build dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y debhelper dh-python python3-all python3-setuptools python3-click python3-requests python3-psutil devscripts
-
-    - name: Get version
-      id: get_version
-      run: |
-        VERSION=$(python3 -c "from bridgelink import __version__; print(__version__)")
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-    - name: Prepare source for Debian build
-      run: |
-        VERSION=${{ steps.get_version.outputs.version }}
-
-        # Copy debian directory to project root
-        cp -r packaging/debian .
-
-        # Update changelog version if needed
-        sed -i "s/0.2.0/${VERSION}/g" debian/changelog
-
-        # Create original tarball
-        cd ..
-        tar -czvf bridgelink_${VERSION}.orig.tar.gz \
-          --exclude='bridgelink/.git' \
-          --exclude='bridgelink/venv' \
-          --exclude='bridgelink/dist' \
-          --exclude='bridgelink/build' \
-          --exclude='bridgelink/*.egg-info' \
-          bridgelink
-        cd bridgelink
-
-    - name: Build Debian package
-      run: |
-        dpkg-buildpackage -us -uc -b
-        ls -la ../
-
-    - name: Upload Debian package
-      uses: actions/upload-artifact@v4
-      with:
-        name: debian-package
-        path: ../*.deb
-        retention-days: 30
-
-  # Upload to Launchpad PPA
-  upload-ppa:
-    name: Upload to Launchpad PPA
-    needs: publish-pypi
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Install build dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y devscripts debhelper dh-python python3-all python3-setuptools python3-click python3-requests python3-psutil gnupg dput
-
-    - name: Import GPG key
-      env:
-        GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-      run: |
-        if [ -z "$GPG_PRIVATE_KEY" ]; then
-          echo "⚠️ GPG_PRIVATE_KEY not set, skipping PPA upload"
-          exit 0
-        fi
-
-        # Import GPG key
-        echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-
-        # Get the key ID
-        GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format=long | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
-        echo "GPG_KEY_ID=$GPG_KEY_ID" >> $GITHUB_ENV
-
-        # Configure GPG for non-interactive use
-        mkdir -p ~/.gnupg
-        echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
-        echo "use-agent" >> ~/.gnupg/gpg.conf
-        gpgconf --kill gpg-agent
-
-    - name: Get version
-      id: get_version
-      run: |
-        VERSION=$(python3 -c "from bridgelink import __version__; print(__version__)")
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-    - name: Prepare source package for PPA
-      env:
-        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-      run: |
-        VERSION=${{ steps.get_version.outputs.version }}
-
-        # Copy debian directory to project root
-        cp -r packaging/debian .
-
-        # Update changelog for PPA (needs Ubuntu series)
-        cat > debian/changelog << 'CHANGELOG'
-        bridgelink (${{ steps.get_version.outputs.version }}-1) jammy; urgency=medium
-
-          * Release version ${{ steps.get_version.outputs.version }}
-          * See https://github.com/AutoFlowLabs/bridgelink/releases for details
-
-         -- AutoFlowLabs <support@autoflowlabs.com>  $(date -R)
-        CHANGELOG
-
-        # Create original tarball
-        cd ..
-        tar -czvf bridgelink_${VERSION}.orig.tar.gz \
-          --exclude='bridgelink/.git' \
-          --exclude='bridgelink/venv' \
-          --exclude='bridgelink/dist' \
-          --exclude='bridgelink/build' \
-          --exclude='bridgelink/*.egg-info' \
-          bridgelink
-        cd bridgelink
-
-    - name: Build signed source package
-      env:
-        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-      run: |
-        if [ -z "$GPG_KEY_ID" ]; then
-          echo "⚠️ GPG key not available, skipping PPA upload"
-          exit 0
-        fi
-
-        # Build source package with GPG signature
-        debuild -S -sa -k${GPG_KEY_ID} \
-          -p"gpg --batch --pinentry-mode loopback --passphrase $GPG_PASSPHRASE"
-
-    - name: Configure dput for Launchpad
-      run: |
-        mkdir -p ~/.dput.cf
-        cat > ~/.dput.cf << 'DPUTCF'
-        [bridgelink-ppa]
-        fqdn = ppa.launchpad.net
-        method = ftp
-        incoming = ~himanshukukreja/bridgelink/ubuntu/
-        login = anonymous
-        allow_unsigned_uploads = 0
-        DPUTCF
-
-    - name: Upload to PPA
-      env:
-        GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-      run: |
-        if [ -z "$GPG_PRIVATE_KEY" ]; then
-          echo "⚠️ GPG_PRIVATE_KEY not set, skipping PPA upload"
-          exit 0
-        fi
-
-        VERSION=${{ steps.get_version.outputs.version }}
-
-        # Upload to PPA
-        cd ..
-        dput bridgelink-ppa bridgelink_${VERSION}-1_source.changes
-
-        echo "✅ Uploaded bridgelink v${VERSION} to ppa:himanshukukreja/bridgelink"
-      continue-on-error: true
-
   notify:
     name: Notify Success
-    needs: [create-release, update-homebrew, build-debian, upload-ppa]
+    needs: create-release
     if: always()
     runs-on: ubuntu-latest
 
@@ -513,13 +272,13 @@ jobs:
       run: |
         echo "✅ BridgeLink v${{ steps.get_version.outputs.version }} published successfully!"
         echo ""
-        echo "📦 Installation Methods:"
-        echo "   PyPI: pip install bridgelink"
-        echo "   Homebrew: brew install AutoFlowLabs/tap/bridgelink"
-        echo "   APT (Ubuntu): sudo add-apt-repository ppa:himanshukukreja/bridgelink && sudo apt install bridgelink"
-        echo "   Debian: Download .deb from GitHub Release"
+        echo "📦 Installation:"
+        echo "   pip install bridgelink"
         echo ""
         echo "🔗 Links:"
         echo "   PyPI: https://pypi.org/project/bridgelink/${{ steps.get_version.outputs.version }}/"
-        echo "   PPA: https://launchpad.net/~himanshukukreja/+archive/ubuntu/bridgelink"
         echo "   GitHub Release: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.get_version.outputs.version }}"
+        echo ""
+        echo "📝 Manual Steps Required:"
+        echo "   - Homebrew: See docs/MANUAL_RELEASE.md"
+        echo "   - PPA (Ubuntu): See docs/MANUAL_RELEASE.md"

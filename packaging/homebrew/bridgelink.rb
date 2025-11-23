@@ -13,7 +13,8 @@ class Bridgelink < Formula
   head "https://github.com/AutoFlowLabs/bridgelink.git", branch: "main"
 
   depends_on "python@3.11"
-  depends_on "android-platform-tools" => :recommended  # For ADB
+  # Note: ADB (android-platform-tools) is now a cask, install separately:
+  # brew install --cask android-platform-tools
 
   resource "click" do
     url "https://files.pythonhosted.org/packages/source/c/click/click-8.1.7.tar.gz"
@@ -88,7 +89,7 @@ class Bridgelink < Formula
       Documentation: https://github.com/AutoFlowLabs/bridgelink
 
       Note: If ADB is not installed, run:
-        brew install android-platform-tools
+        brew install --cask android-platform-tools
     EOS
   end
 
