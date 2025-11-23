@@ -15,6 +15,7 @@ from ..utils.adb import ADBDeviceManager
 from ..utils.bore_installer import BoreInstaller
 from ..daemon.tunnel_manager import TunnelManager
 from ..daemon.background_monitor import get_daemon_instance
+from ..daemon.background_connection_monitor import get_connection_daemon_instance
 
 
 @click.group(name='devices')
@@ -26,8 +27,10 @@ def devices():
 @devices.command(name='add')
 @click.argument('device_serials', nargs=-1, required=True)
 @click.option('--api-key', envvar='NB_API_KEY', help='NativeBridge API key')
+@click.option('--auto-activate', is_flag=True, default=False,
+              help='Auto-activate device when reconnected (after disconnect)')
 @click.pass_context
-def add_device(ctx, device_serials, api_key):
+def add_device(ctx, device_serials, api_key, auto_activate):
     """
     Add one or more Android devices to NativeBridge
 
@@ -37,8 +40,15 @@ def add_device(ctx, device_serials, api_key):
     \b
     Examples:
       bridgelink devices add SERIAL123
-      bridgelink devices add SERIAL1 SERIAL2 SERIAL3
+      bridgelink devices add SERIAL1 SERIAL2 SERIAL3 --auto-activate
       bridgelink devices add SERIAL1,SERIAL2,SERIAL3
+
+    \b
+    Auto-Activate Feature:
+      When --auto-activate is enabled, the device will automatically
+      reactivate (create tunnel and update backend) when reconnected
+      after being disconnected. This eliminates the need to manually
+      run 'bridgelink devices add' or 'activate' again.
     """
     if not api_key:
         click.echo("❌ Error: NativeBridge API key not provided", err=True)
@@ -169,25 +179,46 @@ def add_device(ctx, device_serials, api_key):
                 'device_details': device_details,
                 'tunnel_url': tunnel_url,
                 'device_state': 'active',
+                'auto_activate': auto_activate,
             }
 
             result = api_client.add_device(device_data)
-            click.echo(f"   ✅ Device registered successfully\n")
+            click.echo(f"   ✅ Device registered successfully")
+            if auto_activate:
+                click.echo(f"   🔄 Auto-activation ENABLED - device will auto-reconnect when plugged back in\n")
+            else:
+                click.echo()
 
             # Auto-start background health monitor
             daemon = get_daemon_instance()
             if not daemon.is_running():
                 click.echo("🔍 Starting background health monitor...")
                 if daemon.start(api_key):
-                    click.echo("   ✅ Health monitor started\n")
+                    click.echo("   ✅ Health monitor started")
                 else:
-                    click.echo("   ⚠️  Could not start health monitor (device will still work)\n")
+                    click.echo("   ⚠️  Could not start health monitor (device will still work)")
+
+            # Auto-start connection monitor if auto_activate is enabled
+            if auto_activate:
+                connection_daemon = get_connection_daemon_instance()
+                if not connection_daemon.is_running():
+                    click.echo("🔌 Starting auto-activation connection monitor...")
+                    if connection_daemon.start(api_key):
+                        click.echo("   ✅ Connection monitor started\n")
+                    else:
+                        click.echo("   ⚠️  Could not start connection monitor\n")
+                else:
+                    click.echo("   Connection monitor already running\n")
+            else:
+                click.echo()
 
             click.echo(f"{'✅ SUCCESS'.center(60, '=')}")
             click.echo(f"Device {serial} is now active!")
             click.echo(f"Connect from anywhere:")
             click.echo(f"  adb connect {tunnel_url}")
             click.echo(f"\n💡 Health monitoring is active - disconnected devices will be auto-deactivated")
+            if auto_activate:
+                click.echo(f"🔄 Auto-activation ENABLED - device will auto-reconnect when plugged back in")
             click.echo(f"\n⚠️  SECURITY WARNING:")
             click.echo(f"   Treat this tunnel URL as a SECRET!")
             click.echo(f"   Anyone with this URL can connect to your device.")
@@ -242,13 +273,14 @@ def list_devices(api_key, format):
             click.echo(json.dumps(devices, indent=2))
         else:
             # Table format
-            headers = ['Serial', 'Model', 'Brand', 'Type', 'State', 'Tunnel URL']
+            headers = ['Serial', 'Model', 'Brand', 'Type', 'State', 'Auto-Act', 'Tunnel URL']
             rows = []
 
             for device in devices:
                 details = device.get('device_details', {})
                 state = device.get('device_state', 'N/A')
                 tunnel_url = device.get('tunnel_url', 'N/A')
+                auto_activate = device.get('auto_activate', False)
 
                 # Format state with visual indicator
                 if state == 'active':
@@ -257,6 +289,9 @@ def list_devices(api_key, format):
                     state_display = '○ inactive'
                 else:
                     state_display = state
+
+                # Format auto-activate indicator
+                auto_act_display = '🔄 ON' if auto_activate else '○ off'
 
                 # Format tunnel URL based on state
                 if state == 'inactive' and tunnel_url != 'N/A':
@@ -270,11 +305,13 @@ def list_devices(api_key, format):
                     details.get('brand', 'N/A'),
                     device.get('device_type', 'N/A'),
                     state_display,
+                    auto_act_display,
                     tunnel_display,
                 ])
 
             click.echo(f"\n{tabulate(rows, headers=headers, tablefmt='grid')}\n")
             click.echo(f"Total: {len(devices)} device(s)")
+            click.echo(f"\n💡 Auto-Act: Auto-activation feature (device auto-reconnects when plugged back in)")
 
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)
@@ -579,6 +616,68 @@ def remove_device(device_serial, api_key):
         api_client.delete_device(device_serial)
 
         click.echo(f"✅ Device {device_serial} removed successfully")
+
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+@devices.command(name='set-auto-activate')
+@click.argument('device_serial')
+@click.argument('enabled', type=click.Choice(['on', 'off'], case_sensitive=False))
+@click.option('--api-key', envvar='NB_API_KEY', help='NativeBridge API key')
+def set_auto_activate(device_serial, enabled, api_key):
+    """
+    Enable or disable auto-activation for a device
+
+    DEVICE_SERIAL: Serial number of the device
+    ENABLED: 'on' to enable, 'off' to disable
+
+    \b
+    Examples:
+      bridgelink devices set-auto-activate SERIAL123 on
+      bridgelink devices set-auto-activate SERIAL123 off
+
+    \b
+    When enabled, the device will automatically activate (create tunnel
+    and update backend) when reconnected after being disconnected.
+    """
+
+    if not api_key:
+        click.echo("❌ Error: NativeBridge API key not provided", err=True)
+        sys.exit(1)
+
+    try:
+        api_client = APIClient(api_key=api_key)
+        auto_activate = (enabled.lower() == 'on')
+
+        # Check if device exists
+        device = api_client.get_device(device_serial)
+        if not device:
+            click.echo(f"❌ Device {device_serial} not found", err=True)
+            sys.exit(1)
+
+        # Update auto-activate preference
+        result = api_client.update_auto_activate(device_serial, auto_activate)
+
+        action = "enabled" if auto_activate else "disabled"
+        click.echo(f"✅ Auto-activation {action} for device {device_serial}")
+
+        if auto_activate:
+            # Start connection monitor if not running
+            connection_daemon = get_connection_daemon_instance()
+            if not connection_daemon.is_running():
+                click.echo(f"\n🔌 Starting auto-activation connection monitor...")
+                if connection_daemon.start(api_key):
+                    click.echo(f"   ✅ Connection monitor started")
+                else:
+                    click.echo(f"   ⚠️  Could not start connection monitor")
+
+            click.echo(f"\n💡 Device will automatically reconnect when plugged back in")
+            click.echo(f"   No need to run 'bridgelink devices add' again!")
+        else:
+            click.echo(f"\n💡 Device will require manual activation:")
+            click.echo(f"   bridgelink devices activate {device_serial}")
 
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)

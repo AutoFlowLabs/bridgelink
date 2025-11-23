@@ -1,31 +1,30 @@
 """
-Background Health Monitor Daemon
-Automatically monitors active devices and deactivates disconnected ones
+Background Connection Monitor Daemon
+Automatically monitors for newly connected devices and activates them if auto_activate is enabled
 """
 
 import os
 import sys
 import time
 import signal
-import json
 import subprocess
 from pathlib import Path
 from typing import Optional
 
 
-class BackgroundMonitorDaemon:
+class BackgroundConnectionMonitorDaemon:
     """
-    Manages the background health monitoring daemon process
+    Manages the background connection monitoring daemon process
     """
 
     def __init__(self):
         self.state_dir = Path.home() / '.bridgelink'
         self.state_dir.mkdir(exist_ok=True)
-        self.pid_file = self.state_dir / 'monitor.pid'
-        self.log_file = self.state_dir / 'monitor.log'
+        self.pid_file = self.state_dir / 'connection_monitor.pid'
+        self.log_file = self.state_dir / 'connection_monitor.log'
 
     def is_running(self) -> bool:
-        """Check if monitor daemon is running"""
+        """Check if connection monitor daemon is running"""
         if not self.pid_file.exists():
             return False
 
@@ -43,7 +42,7 @@ class BackgroundMonitorDaemon:
             return False
 
     def get_pid(self) -> Optional[int]:
-        """Get PID of running monitor daemon"""
+        """Get PID of running connection monitor daemon"""
         if not self.pid_file.exists():
             return None
 
@@ -55,11 +54,11 @@ class BackgroundMonitorDaemon:
 
     def start(self, api_key: str, poll_interval: int = 1) -> bool:
         """
-        Start the background monitor daemon
+        Start the background connection monitor daemon
 
         Args:
-            api_key: NativeBridge API key for backend updates
-            poll_interval: Seconds between health checks (default: 1)
+            api_key: NativeBridge API key
+            poll_interval: Seconds between connection checks (default: 1)
 
         Returns:
             True if started successfully, False otherwise
@@ -70,12 +69,11 @@ class BackgroundMonitorDaemon:
 
         try:
             # Start daemon process
-            # Use subprocess to run the monitor in background
             process = subprocess.Popen(
                 [
                     sys.executable,
                     '-m',
-                    'bridgelink.daemon.monitor_runner',
+                    'bridgelink.daemon.connection_monitor_runner',
                     '--api-key', api_key,
                     '--interval', str(poll_interval)
                 ],
@@ -99,12 +97,12 @@ class BackgroundMonitorDaemon:
                 return False
 
         except Exception as e:
-            print(f"Failed to start monitor daemon: {e}")
+            print(f"Failed to start connection monitor daemon: {e}")
             return False
 
     def stop(self) -> bool:
         """
-        Stop the background monitor daemon
+        Stop the background connection monitor daemon
 
         Returns:
             True if stopped successfully, False otherwise
@@ -136,12 +134,12 @@ class BackgroundMonitorDaemon:
             return True
 
         except Exception as e:
-            print(f"Failed to stop monitor daemon: {e}")
+            print(f"Failed to stop connection monitor daemon: {e}")
             return False
 
     def ensure_running(self, api_key: str) -> bool:
         """
-        Ensure monitor daemon is running, start if not
+        Ensure connection monitor daemon is running, start if not
 
         Args:
             api_key: NativeBridge API key
@@ -169,12 +167,12 @@ class BackgroundMonitorDaemon:
 
 
 # Singleton instance
-_daemon_instance = None
+_connection_daemon_instance = None
 
 
-def get_daemon_instance() -> BackgroundMonitorDaemon:
-    """Get or create daemon instance"""
-    global _daemon_instance
-    if _daemon_instance is None:
-        _daemon_instance = BackgroundMonitorDaemon()
-    return _daemon_instance
+def get_connection_daemon_instance() -> BackgroundConnectionMonitorDaemon:
+    """Get or create connection daemon instance"""
+    global _connection_daemon_instance
+    if _connection_daemon_instance is None:
+        _connection_daemon_instance = BackgroundConnectionMonitorDaemon()
+    return _connection_daemon_instance

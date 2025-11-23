@@ -1,0 +1,28 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    configure)
+        echo ""
+        echo "=============================================="
+        echo "  BridgeLink installed successfully!"
+        echo "=============================================="
+        echo ""
+        echo "Quick Start:"
+        echo "  1. Set your API key:"
+        echo "     export NB_API_KEY='your-api-key'"
+        echo ""
+        echo "  2. Install bore tunnel (first time only):"
+        echo "     bridgelink install --bore-only"
+        echo ""
+        echo "  3. Add a device:"
+        echo "     bridgelink devices add <device-serial>"
+        echo ""
+        echo "Get your API key: https://nativebridge.io/dashboard/api-keys"
+        echo ""
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

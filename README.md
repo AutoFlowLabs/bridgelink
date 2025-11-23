@@ -17,7 +17,8 @@
 - 🤖 **Auto-Installation** - Automatically installs bore tunnel and ADB
 - 💻 **Cross-Platform** - Works on macOS, Linux, and Windows
 - 🔄 **Background Management** - Tunnels run in the background as daemons
-- 🔍 **Automatic Health Monitoring** - Auto-detects and deactivates disconnected devices (5s polling)
+- 🔍 **Automatic Health Monitoring** - Auto-detects and deactivates disconnected devices (1s polling - fast!)
+- **🔄 Auto-Activation** - Devices automatically reconnect when plugged back in (1s polling - fast!)
 - 📊 **Device Tracking** - Track device state and connection URLs in real-time
 - ✅ **Input Validation** - Validates device serials via ADB before backend calls
 - 🎯 **Smart Activation** - Intelligently reactivates existing devices
@@ -25,15 +26,100 @@
 
 ---
 
-## 🚀 Quick Start
+## 📦 Installation
 
-### 1. Install BridgeLink
+Choose your preferred installation method:
+
+### Option 1: Homebrew (macOS) - Recommended for Mac users
+
+```bash
+# Add the BridgeLink tap
+brew tap AutoFlowLabs/tap
+
+# Install BridgeLink
+brew install bridgelink
+```
+
+This automatically installs all dependencies including Python and bore tunnel.
+
+---
+
+### Option 2: APT (Debian/Ubuntu) - Recommended for Linux users
+
+```bash
+# Add the BridgeLink repository
+sudo add-apt-repository ppa:autoflowlabs/bridgelink
+sudo apt update
+
+# Install BridgeLink
+sudo apt install bridgelink
+```
+
+This automatically installs all dependencies including ADB.
+
+---
+
+### Option 3: pip (All platforms) - For Python developers
+
+#### Step 1: Create Virtual Environment (Recommended)
+
+<details>
+<summary><b>macOS / Linux</b></summary>
+
+```bash
+# Create virtual environment
+python3 -m venv bridgelink-env
+
+# Activate virtual environment
+source bridgelink-env/bin/activate
+
+# Your prompt should now show (bridgelink-env)
+```
+
+</details>
+
+<details>
+<summary><b>Windows (Command Prompt)</b></summary>
+
+```cmd
+# Create virtual environment
+python -m venv bridgelink-env
+
+# Activate virtual environment
+bridgelink-env\Scripts\activate.bat
+
+# Your prompt should now show (bridgelink-env)
+```
+
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+```powershell
+# Create virtual environment
+python -m venv bridgelink-env
+
+# Activate virtual environment
+bridgelink-env\Scripts\Activate.ps1
+
+# If you get an execution policy error, run:
+# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Your prompt should now show (bridgelink-env)
+```
+
+</details>
+
+> **Note:** Remember to activate the virtual environment each time you open a new terminal session before using BridgeLink.
+
+#### Step 2: Install BridgeLink
 
 ```bash
 pip install bridgelink
 ```
 
-### 2. Install Dependencies
+#### Step 3: Install Dependencies (pip only)
 
 ```bash
 bridgelink install
@@ -43,25 +129,42 @@ This automatically installs:
 - **bore** - Tunnel binary for your platform (macOS, Linux, Windows)
 - **ADB** - Android Debug Bridge from Google
 
-### 3. Set API Key
+---
+
+## 🚀 Quick Start
+
+After installation, follow these steps:
+
+### 1. Set API Key
 
 Get your API key from [NativeBridge Dashboard](https://nativebridge.io/dashboard/api-keys):
 
+**macOS / Linux:**
 ```bash
 export NB_API_KEY='Nb-kNGB.your-api-key-here'
 ```
 
-### 4. Connect Your Device
+**Windows (Command Prompt):**
+```cmd
+set NB_API_KEY=Nb-kNGB.your-api-key-here
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:NB_API_KEY="Nb-kNGB.your-api-key-here"
+```
+
+### 2. Connect Your Device
 
 Connect your Android device via USB and enable USB debugging.
 
-### 5. Add Device
+### 3. Add Device
 
 ```bash
 bridgelink devices add <device-serial>
 ```
 
-### 6. Access Remotely
+### 4. Access Remotely
 
 ```bash
 adb connect bridgelink.nativebridge.io:15750
@@ -77,6 +180,7 @@ adb connect bridgelink.nativebridge.io:15750
 # Add device(s)
 bridgelink devices add <serial>
 bridgelink devices add <serial1> <serial2>  # Multiple devices
+bridgelink devices add <serial> --auto-activate  # Enable auto-activation
 
 # Activate existing device
 bridgelink devices activate <serial>
@@ -91,6 +195,10 @@ bridgelink devices deactivate --all        # Deactivate ALL active devices
 
 # Remove device completely
 bridgelink devices remove <serial>
+
+# Auto-activation management
+bridgelink devices set-auto-activate <serial> on   # Enable auto-activation
+bridgelink devices set-auto-activate <serial> off  # Disable auto-activation
 ```
 
 ### Daemon Management
@@ -126,14 +234,16 @@ bridgelink install --adb-only
 
 ---
 
-## 🔍 Automatic Health Monitoring
+## 🔍 Automatic Health Monitoring & Auto-Activation
 
-BridgeLink includes **automatic background health monitoring** that runs seamlessly without any manual intervention.
+BridgeLink includes **two automatic background monitors** that work together to provide a fully automated device lifecycle:
 
-### How It Works
+### 1. Health Monitor (Auto-Deactivation)
+
+**Watches for disconnections and automatically deactivates devices**
 
 1. **Auto-Start**: When you add the first device, a background daemon automatically starts
-2. **Continuous Monitoring**: Checks device connectivity every 5 seconds
+2. **Continuous Monitoring**: Checks device connectivity every **1 second** (fast!)
 3. **Smart Detection**:
    - **Physical Devices**: Must be in "device" state (strict)
    - **Emulators**: Can be in "device" or "offline" state (lenient)
@@ -143,41 +253,69 @@ BridgeLink includes **automatic background health monitoring** that runs seamles
    - No stale connections!
 5. **Auto-Stop**: When all devices are deactivated, the daemon automatically stops
 
+### 2. Connection Monitor (Auto-Activation) 🆕
+
+**Watches for reconnections and automatically activates devices with auto-activation enabled**
+
+1. **Auto-Start**: When you enable auto-activation for a device, the connection monitor starts
+2. **Continuous Watching**: Checks for newly connected devices every **1 second** (fast!)
+3. **Smart Activation**: When a device reconnects:
+   - Checks if device has `auto_activate` enabled in backend
+   - Verifies device is currently inactive
+   - Automatically creates tunnel and activates device
+4. **Zero Manual Intervention**: Once enabled, devices reconnect automatically when plugged back in
+
 ### What This Means for You
 
 ✅ **No Manual Monitoring** - Everything happens automatically
-✅ **Fast Detection** - Disconnects detected within 5 seconds
+✅ **Lightning Fast Detection** - Disconnects/reconnects detected within 1 second!
 ✅ **Clean State** - No stale tunnels or active states
-✅ **Zero Maintenance** - Daemon manages itself
+✅ **Zero Maintenance** - Daemons manage themselves
+✅ **Opt-in Auto-Reconnect** - Enable per device as needed
 
-### Example Flow
+### Example Flow (With Auto-Activation)
 
 ```bash
-# 1. Add a device
-$ bridgelink devices add emulator-5554
+# 1. Add a device with auto-activation enabled
+$ bridgelink devices add emulator-5554 --auto-activate
 🔍 Starting background health monitor...
    ✅ Health monitor started
+🔌 Starting auto-activation connection monitor...
+   ✅ Connection monitor started
 💡 Health monitoring is active - disconnected devices will be auto-deactivated
+🔄 Auto-activation ENABLED - device will auto-reconnect when plugged back in
 
 # 2. Device gets physically disconnected
-#    (Background daemon automatically detects and deactivates)
+#    (Health monitor automatically detects and deactivates)
 #    Logs to ~/.bridgelink/monitor.log:
 #    ⚠️  Device emulator-5554 is unhealthy: Device disconnected
 #       Stopping tunnel...
 #       Updating backend state to inactive...
 #    ✅ Device emulator-5554 deactivated successfully
 
-# 3. Deactivate last device
-$ bridgelink devices deactivate emulator-5554
-🔍 No active devices remaining, stopping health monitor...
-   ✅ Health monitor stopped
+# 3. Device gets reconnected (USB plugged back in)
+#    (Connection monitor automatically detects and activates)
+#    Logs to ~/.bridgelink/connection_monitor.log:
+#    🔌 Detected 1 newly connected device(s)
+#    🔄 Auto-activating device: emulator-5554
+#       Setting up ADB TCP mode...
+#       Creating bore tunnel...
+#       Tunnel URL: bridgelink.nativebridge.io:15751
+#    ✅ Device emulator-5554 auto-activated successfully
+#
+#    ← No manual intervention needed!
 ```
 
-### Daemon Location
+### Daemon Locations
 
+**Health Monitor:**
 - **PID File**: `~/.bridgelink/monitor.pid`
 - **Log File**: `~/.bridgelink/monitor.log`
 - **State File**: `~/.bridgelink/health_monitor.json`
+
+**Connection Monitor:**
+- **PID File**: `~/.bridgelink/connection_monitor.pid`
+- **Log File**: `~/.bridgelink/connection_monitor.log`
 
 ---
 
@@ -187,7 +325,9 @@ For complete documentation, visit the [GitHub repository](https://github.com/Aut
 
 **Key Guides:**
 - **[Security Guide](https://github.com/AutoFlowLabs/bridgelink/blob/main/docs/SECURITY.md)** - Security best practices ⚠️ **READ FIRST**
+- **[Auto-Activation Feature](https://github.com/AutoFlowLabs/bridgelink/blob/main/docs/AUTO_ACTIVATION_FEATURE.md)** - Detailed auto-activation guide 🆕
 - **[Complete Command Reference](https://github.com/AutoFlowLabs/bridgelink/blob/main/docs/README.md)** - All commands with examples
+- **[Architecture](https://github.com/AutoFlowLabs/bridgelink/blob/main/docs/ARCHITECTURE.md)** - System architecture and data flow
 - **[Deployment Guide](https://github.com/AutoFlowLabs/bridgelink/blob/main/docs/DEPLOYMENT_STEPS.md)** - Backend setup and deployment
 - **[Local Testing](https://github.com/AutoFlowLabs/bridgelink/blob/main/docs/LOCAL_TESTING_GUIDE.md)** - Test before PyPI release
 - **[PyPI Release](https://github.com/AutoFlowLabs/bridgelink/blob/main/docs/PYPI_RELEASE.md)** - Publishing guide
