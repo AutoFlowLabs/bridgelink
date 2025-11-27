@@ -24,6 +24,24 @@ class APIClient:
                 "or pass api_key parameter"
             )
 
+    def get_dashboard_url(self) -> str:
+        """
+        Get the NativeBridge dashboard URL based on the backend URL
+
+        Returns:
+            Dashboard URL for BridgeLink devices
+        """
+        # Map backend URL to frontend URL
+        if 'dev.api.nativebridge.io' in self.base_url:
+            # Development environment
+            return 'https://trust-me-bro.nativebridge.io/dashboard/bridgelink'
+        elif 'api.nativebridge.io' in self.base_url:
+            # Production environment
+            return 'https://nativebridge.io/dashboard/bridgelink'
+        else:
+            # Default to production
+            return 'https://nativebridge.io/dashboard/bridgelink'
+
     def _get_headers(self):
         """Get common headers for API requests"""
         return {

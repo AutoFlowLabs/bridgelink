@@ -43,45 +43,74 @@ class TunnelManager:
         except Exception as e:
             print(f"Warning: Could not save tunnel state: {e}")
 
-    def setup_adb_tcp(self, device_serial: str) -> Optional[int]:
+    def setup_adb_tcp(self, device_serial: str, is_wifi: bool = False) -> Optional[int]:
         """
         Setup ADB TCP mode for a device
+
+        Args:
+            device_serial: Device serial or IP:port (for WiFi)
+            is_wifi: True if device is connected via WiFi
 
         Returns:
             Port number if successful, None otherwise
         """
         try:
-            # Enable TCP mode on device
-            result = subprocess.run(
-                ['adb', '-s', device_serial, 'tcpip', '5555'],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
+            if is_wifi:
+                # For WiFi connections, device_serial is already IP:port
+                # We just need to find an available local port for tunnel
+                # No need to enable tcpip mode or port forwarding
+                # The WiFi connection itself is on port 5555
+                port = self._find_available_port(5555)
+                if not port:
+                    return None
 
-            if result.returncode != 0:
-                return None
+                # Setup port forwarding from local port to device's ADB port (5555)
+                # For WiFi: we forward local port -> device IP:5555
+                device_ip = device_serial.split(':')[0]
+                result = subprocess.run(
+                    ['adb', '-s', device_serial, 'forward', f'tcp:{port}', 'tcp:5555'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
 
-            time.sleep(3)
+                if result.returncode != 0:
+                    return None
 
-            # Find available port
-            port = self._find_available_port(5555)
+                return port
+            else:
+                # USB connection - original flow
+                # Enable TCP mode on device
+                result = subprocess.run(
+                    ['adb', '-s', device_serial, 'tcpip', '5555'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
 
-            if not port:
-                return None
+                if result.returncode != 0:
+                    return None
 
-            # Setup port forwarding
-            result = subprocess.run(
-                ['adb', '-s', device_serial, 'forward', f'tcp:{port}', 'tcp:5555'],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
+                time.sleep(3)
 
-            if result.returncode != 0:
-                return None
+                # Find available port
+                port = self._find_available_port(5555)
 
-            return port
+                if not port:
+                    return None
+
+                # Setup port forwarding
+                result = subprocess.run(
+                    ['adb', '-s', device_serial, 'forward', f'tcp:{port}', 'tcp:5555'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+
+                if result.returncode != 0:
+                    return None
+
+                return port
 
         except Exception as e:
             print(f"Error setting up ADB TCP: {e}")

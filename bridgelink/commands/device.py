@@ -29,8 +29,10 @@ def devices():
 @click.option('--api-key', envvar='NB_API_KEY', help='NativeBridge API key')
 @click.option('--auto-activate', is_flag=True, default=False,
               help='Auto-activate device when reconnected (after disconnect)')
+@click.option('--wifi', is_flag=True, default=False,
+              help='Connect device via WiFi (device must be USB-connected first to enable WiFi mode)')
 @click.pass_context
-def add_device(ctx, device_serials, api_key, auto_activate):
+def add_device(ctx, device_serials, api_key, auto_activate, wifi):
     """
     Add one or more Android devices to NativeBridge
 
@@ -42,6 +44,18 @@ def add_device(ctx, device_serials, api_key, auto_activate):
       bridgelink devices add SERIAL123
       bridgelink devices add SERIAL1 SERIAL2 SERIAL3 --auto-activate
       bridgelink devices add SERIAL1,SERIAL2,SERIAL3
+      bridgelink devices add SERIAL123 --wifi  # Enable WiFi connection
+
+    \b
+    WiFi Connection:
+      When --wifi is enabled, the device will be set up for wireless ADB connection.
+      The device must be initially connected via USB. The setup process will:
+      1. Enable TCP/IP mode on the device
+      2. Get the device's WiFi IP address
+      3. Connect via WiFi
+      4. Create tunnel using WiFi connection
+      After setup, you can disconnect the USB cable and the device will remain
+      accessible via BridgeLink using WiFi.
 
     \b
     Auto-Activate Feature:
@@ -79,23 +93,40 @@ def add_device(ctx, device_serials, api_key, auto_activate):
     try:
         api_client = APIClient(api_key=api_key)
         user_info = api_client.validate_api_key()
-        click.echo(f"✅ Authenticated as: {user_info['user_email']}\n")
+        click.echo(click.style("✅ Authenticated as: ", fg='green', bold=True) +
+                   click.style(user_info['user_email'], fg='yellow', bold=True) + "\n")
     except Exception as e:
-        click.echo(f"❌ API key validation failed: {e}", err=True)
+        click.echo(click.style(f"❌ API key validation failed: {e}", fg='red', bold=True), err=True)
         sys.exit(1)
 
     # Get all connected ADB devices
-    connected_devices = ADBDeviceManager.list_devices()
+    if wifi:
+        # For WiFi mode, we need USB devices first
+        connected_devices = ADBDeviceManager.list_usb_devices()
 
-    if not connected_devices:
-        click.echo("❌ No Android devices found via ADB", err=True)
-        click.echo("\nMake sure:")
-        click.echo("  1. Device is connected via USB")
-        click.echo("  2. USB debugging is enabled")
-        click.echo("  3. ADB is installed and in PATH")
-        sys.exit(1)
+        if not connected_devices:
+            click.echo("❌ No USB-connected Android devices found", err=True)
+            click.echo("\nFor WiFi setup, you must:")
+            click.echo("  1. Connect device via USB first")
+            click.echo("  2. Ensure USB debugging is enabled")
+            click.echo("  3. Both device and computer must be on the same WiFi network")
+            click.echo("\nAfter WiFi setup completes, you can disconnect the USB cable.")
+            sys.exit(1)
 
-    click.echo(f"Found {len(connected_devices)} connected device(s)\n")
+        click.echo(f"Found {len(connected_devices)} USB-connected device(s)\n")
+    else:
+        # Normal mode - get all devices (USB + WiFi)
+        connected_devices = ADBDeviceManager.list_devices()
+
+        if not connected_devices:
+            click.echo("❌ No Android devices found via ADB", err=True)
+            click.echo("\nMake sure:")
+            click.echo("  1. Device is connected via USB")
+            click.echo("  2. USB debugging is enabled")
+            click.echo("  3. ADB is installed and in PATH")
+            sys.exit(1)
+
+        click.echo(f"Found {len(connected_devices)} connected device(s)\n")
 
     # Initialize tunnel manager
     tunnel_manager = TunnelManager()
@@ -103,9 +134,10 @@ def add_device(ctx, device_serials, api_key, auto_activate):
     # Process each device
     success_count = 0
     for serial in serials:
-        click.echo(f"{'='*60}")
-        click.echo(f"Processing device: {serial}")
-        click.echo(f"{'='*60}\n")
+        click.echo(click.style(f"{'='*60}", fg='cyan'))
+        click.echo(click.style(f"Processing device: ", fg='cyan', bold=True) +
+                   click.style(serial, fg='magenta', bold=True))
+        click.echo(click.style(f"{'='*60}", fg='cyan') + "\n")
 
         # Check if device is connected
         if serial not in connected_devices:
@@ -113,28 +145,100 @@ def add_device(ctx, device_serials, api_key, auto_activate):
             click.echo(f"   Connected devices: {', '.join(connected_devices)}\n")
             continue
 
+        # WiFi setup if requested
+        wifi_serial = None
+        if wifi:
+            click.echo(click.style("📡 Setting up WiFi connection...", fg='blue', bold=True))
+
+            # Step 1: Enable TCP/IP mode on device
+            click.echo(click.style("   Step 1/3: Enabling TCP/IP mode on device...", fg='blue'))
+            if not ADBDeviceManager.enable_tcpip_mode(serial):
+                click.echo(click.style(f"❌ Failed to enable TCP/IP mode on device {serial}", fg='red', bold=True), err=True)
+                click.echo(click.style("   Make sure the device is connected via USB and authorized.\n", fg='yellow'))
+                continue
+
+            click.echo(click.style("   ✓ TCP/IP mode enabled on port 5555", fg='green'))
+
+            # Step 2: Get device IP address
+            click.echo(click.style("   Step 2/3: Getting device IP address...", fg='blue'))
+            device_ip = ADBDeviceManager.get_device_ip_address(serial)
+
+            if not device_ip:
+                click.echo(click.style(f"❌ Could not get IP address for device {serial}", fg='red', bold=True), err=True)
+                click.echo(click.style("   Make sure:", fg='yellow'))
+                click.echo(click.style("     1. Device is connected to WiFi", fg='yellow'))
+                click.echo(click.style("     2. Device and computer are on the same network", fg='yellow'))
+                click.echo(click.style("     3. WiFi is enabled on the device\n", fg='yellow'))
+                continue
+
+            click.echo(click.style(f"   ✓ Device IP address: ", fg='green') +
+                       click.style(device_ip, fg='cyan', bold=True))
+
+            # Step 3: Connect via WiFi
+            click.echo(click.style("   Step 3/3: Connecting to device via WiFi...", fg='blue'))
+            if not ADBDeviceManager.connect_wifi(device_ip):
+                click.echo(click.style(f"❌ Failed to connect to device via WiFi", fg='red', bold=True), err=True)
+                click.echo(click.style(f"   Try manually: adb connect {device_ip}:5555\n", fg='yellow'))
+                continue
+
+            click.echo(click.style(f"   ✓ Connected via WiFi: ", fg='green') +
+                       click.style(f"{device_ip}:5555", fg='cyan', bold=True))
+            click.echo(click.style(f"\n💡 You can now disconnect the USB cable!", fg='yellow', bold=True))
+            click.echo(click.style(f"   The device will remain connected via WiFi.\n", fg='yellow'))
+
+            # Use WiFi address for the rest of the setup
+            wifi_serial = f"{device_ip}:5555"
+            serial = wifi_serial  # Update serial to use WiFi connection
+
         try:
             # Get device information
-            click.echo("📱 Fetching device information...")
+            click.echo(click.style("📱 Fetching device information...", fg='blue', bold=True))
             device_info = ADBDeviceManager.get_device_info(serial)
 
             if not device_info:
-                click.echo(f"❌ Could not get device information for {serial}", err=True)
+                click.echo(click.style(f"❌ Could not get device information for {serial}", fg='red', bold=True), err=True)
                 continue
 
+            # Determine connection mode
+            connection_mode = 'WiFi' if ADBDeviceManager.is_wifi_connection(serial) else 'USB'
+
             device_details = {
-                'brand': device_info.manufacturer,
+                'brand': device_info.manufacturer,  # Backend expects 'brand'
                 'model': device_info.model,
-                'android_version': device_info.android_version,
+                'android_version': device_info.android_version,  # Backend expects 'android_version'
                 'sdk_version': device_info.sdk_version,
+                'manufacturer': device_info.manufacturer,
+                'os_version': device_info.android_version,
+                'sdk': device_info.sdk_version,
+                'security_patch': device_info.security_patch,
+                'cpu': device_info.cpu,
+                'ram_gb': device_info.ram_gb,
+                'storage_gb': device_info.storage_gb,
+                'resolution': device_info.resolution,
+                'density_dpi': device_info.density_dpi,
+                'connection_mode': connection_mode,
             }
 
             device_type = 'emulator' if 'emulator' in serial.lower() else 'physical'
 
-            click.echo(f"   Model: {device_info.model}")
-            click.echo(f"   Brand: {device_info.manufacturer}")
-            click.echo(f"   Android: {device_info.android_version}")
-            click.echo(f"   Type: {device_type}\n")
+            click.echo(click.style("   Model: ", fg='white') +
+                       click.style(device_info.model, fg='cyan', bold=True))
+            click.echo(click.style("   Manufacturer: ", fg='white') +
+                       click.style(device_info.manufacturer, fg='cyan', bold=True))
+            click.echo(click.style("   Android: ", fg='white') +
+                       click.style(f"{device_info.android_version}", fg='green', bold=True) +
+                       click.style(f" (SDK {device_info.sdk_version})", fg='green'))
+            if device_info.ram_gb:
+                click.echo(click.style("   RAM: ", fg='white') +
+                           click.style(f"{device_info.ram_gb} GB", fg='magenta', bold=True))
+            if device_info.storage_gb:
+                click.echo(click.style("   Storage: ", fg='white') +
+                           click.style(f"{device_info.storage_gb} GB", fg='magenta', bold=True))
+            if device_info.resolution:
+                click.echo(click.style("   Resolution: ", fg='white') +
+                           click.style(device_info.resolution, fg='yellow', bold=True))
+            click.echo(click.style("   Type: ", fg='white') +
+                       click.style(device_type, fg='blue', bold=True) + "\n")
 
             # Check if device already exists in backend
             click.echo("🔍 Checking device status...")
@@ -150,14 +254,15 @@ def add_device(ctx, device_serials, api_key, auto_activate):
                     click.echo(f"   Device exists but is inactive. Reactivating...\n")
 
             # Setup ADB TCP mode and get port
-            click.echo("🔧 Setting up ADB TCP mode...")
-            adb_port = tunnel_manager.setup_adb_tcp(serial)
+            click.echo("🔧 Setting up ADB port forwarding...")
+            is_wifi_conn = ADBDeviceManager.is_wifi_connection(serial)
+            adb_port = tunnel_manager.setup_adb_tcp(serial, is_wifi=is_wifi_conn)
 
             if not adb_port:
-                click.echo(f"❌ Failed to setup ADB TCP mode for {serial}", err=True)
+                click.echo(f"❌ Failed to setup ADB port forwarding for {serial}", err=True)
                 continue
 
-            click.echo(f"   ADB TCP port: {adb_port}\n")
+            click.echo(f"   Local ADB port: {adb_port}\n")
 
             # Create bore tunnel
             click.echo("🌉 Creating bore tunnel...")
@@ -212,17 +317,33 @@ def add_device(ctx, device_serials, api_key, auto_activate):
             else:
                 click.echo()
 
-            click.echo(f"{'✅ SUCCESS'.center(60, '=')}")
-            click.echo(f"Device {serial} is now active!")
-            click.echo(f"Connect from anywhere:")
-            click.echo(f"  adb connect {tunnel_url}")
-            click.echo(f"\n💡 Health monitoring is active - disconnected devices will be auto-deactivated")
+            click.echo(click.style(f"{'='*60}", fg='green', bold=True))
+            click.echo(click.style("✅ SUCCESS", fg='green', bold=True).center(60 + 10))
+            click.echo(click.style(f"{'='*60}", fg='green', bold=True))
+            click.echo(click.style("Device ", fg='white') +
+                       click.style(serial, fg='cyan', bold=True) +
+                       click.style(" is now active!", fg='green', bold=True))
+            click.echo(click.style("Connect from anywhere:", fg='yellow', bold=True))
+            click.echo(click.style("  adb connect ", fg='white') +
+                       click.style(tunnel_url, fg='magenta', bold=True))
+
+            # Show dashboard URL
+            dashboard_url = api_client.get_dashboard_url()
+            click.echo(click.style("\n🌐 Manage device in NativeBridge Dashboard:", fg='blue', bold=True))
+            click.echo(click.style("   ", fg='white') +
+                       click.style(dashboard_url, fg='cyan', bold=True, underline=True))
+            click.echo(click.style("   → View device status, start remote sessions, and control your device", fg='blue'))
+
+            click.echo(click.style("\n💡 Health monitoring is active", fg='yellow', bold=True) +
+                       click.style(" - disconnected devices will be auto-deactivated", fg='yellow'))
             if auto_activate:
-                click.echo(f"🔄 Auto-activation ENABLED - device will auto-reconnect when plugged back in")
-            click.echo(f"\n⚠️  SECURITY WARNING:")
-            click.echo(f"   Treat this tunnel URL as a SECRET!")
-            click.echo(f"   Anyone with this URL can connect to your device.")
-            click.echo(f"   Deactivate when not in use: bridgelink devices deactivate {serial}\n")
+                click.echo(click.style("🔄 Auto-activation ENABLED", fg='green', bold=True) +
+                           click.style(" - device will auto-reconnect when plugged back in", fg='green'))
+            click.echo(click.style("\n⚠️  SECURITY WARNING:", fg='yellow', bold=True))
+            click.echo(click.style("   Treat this tunnel URL as a SECRET!", fg='yellow'))
+            click.echo(click.style("   Anyone with this URL can connect to your device.", fg='yellow'))
+            click.echo(click.style("   Deactivate when not in use: ", fg='yellow') +
+                       click.style(f"bridgelink devices deactivate {serial}", fg='white', bold=True) + "\n")
 
             success_count += 1
 
@@ -264,23 +385,24 @@ def list_devices(api_key, format):
             click.echo(f"DEBUG: Response: {devices}")
 
         if not devices:
-            click.echo("No devices registered yet.")
-            click.echo("\nAdd a device:")
-            click.echo("  bridgelink devices add <device-serial>")
+            click.echo(click.style("No devices registered yet.", fg='yellow', bold=True))
+            click.echo(click.style("\nAdd a device:", fg='cyan'))
+            click.echo(click.style("  bridgelink devices add <device-serial>", fg='white', bold=True))
             return
 
         if format == 'json':
             click.echo(json.dumps(devices, indent=2))
         else:
             # Table format
-            headers = ['Serial', 'Model', 'Brand', 'Type', 'State', 'Auto-Act', 'Tunnel URL']
+            headers = ['#', 'Serial', 'Model', 'Brand', 'Type', 'Mode', 'State', 'Auto-Act', 'Tunnel URL']
             rows = []
 
-            for device in devices:
+            for idx, device in enumerate(devices, start=1):
                 details = device.get('device_details', {})
                 state = device.get('device_state', 'N/A')
                 tunnel_url = device.get('tunnel_url', 'N/A')
                 auto_activate = device.get('auto_activate', False)
+                connection_mode = details.get('connection_mode', 'N/A')
 
                 # Format state with visual indicator
                 if state == 'active':
@@ -300,18 +422,24 @@ def list_devices(api_key, format):
                     tunnel_display = tunnel_url if tunnel_url != 'N/A' else '-'
 
                 rows.append([
+                    idx,
                     device.get('device_serial', 'N/A'),
                     details.get('model', 'N/A'),
                     details.get('brand', 'N/A'),
                     device.get('device_type', 'N/A'),
+                    connection_mode,
                     state_display,
                     auto_act_display,
                     tunnel_display,
                 ])
 
             click.echo(f"\n{tabulate(rows, headers=headers, tablefmt='grid')}\n")
-            click.echo(f"Total: {len(devices)} device(s)")
-            click.echo(f"\n💡 Auto-Act: Auto-activation feature (device auto-reconnects when plugged back in)")
+            click.echo(click.style("Total: ", fg='white') +
+                       click.style(f"{len(devices)} device(s)", fg='cyan', bold=True))
+            click.echo(click.style("\n💡 Mode: ", fg='yellow', bold=True) +
+                       click.style("Connection mode (USB or WiFi)", fg='yellow'))
+            click.echo(click.style("💡 Auto-Act: ", fg='yellow', bold=True) +
+                       click.style("Auto-activation feature (device auto-reconnects when plugged back in)", fg='yellow'))
 
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)
@@ -487,9 +615,10 @@ def activate_device(device_serial, api_key):
     try:
         api_client = APIClient(api_key=api_key)
         user_info = api_client.validate_api_key()
-        click.echo(f"✅ Authenticated as: {user_info['user_email']}\n")
+        click.echo(click.style("✅ Authenticated as: ", fg='green', bold=True) +
+                   click.style(user_info['user_email'], fg='yellow', bold=True) + "\n")
     except Exception as e:
-        click.echo(f"❌ API key validation failed: {e}", err=True)
+        click.echo(click.style(f"❌ API key validation failed: {e}", fg='red', bold=True), err=True)
         sys.exit(1)
 
     # Check if device exists in backend
@@ -529,14 +658,15 @@ def activate_device(device_serial, api_key):
         tunnel_manager = TunnelManager()
 
         # Setup ADB TCP mode and get port
-        click.echo("🔧 Setting up ADB TCP mode...")
-        adb_port = tunnel_manager.setup_adb_tcp(device_serial)
+        click.echo("🔧 Setting up ADB port forwarding...")
+        is_wifi_conn = ADBDeviceManager.is_wifi_connection(device_serial)
+        adb_port = tunnel_manager.setup_adb_tcp(device_serial, is_wifi=is_wifi_conn)
 
         if not adb_port:
-            click.echo(f"❌ Failed to setup ADB TCP mode for {device_serial}", err=True)
+            click.echo(f"❌ Failed to setup ADB port forwarding for {device_serial}", err=True)
             sys.exit(1)
 
-        click.echo(f"   ADB TCP port: {adb_port}\n")
+        click.echo(f"   Local ADB port: {adb_port}\n")
 
         # Get device type for health monitoring
         device_type = existing_device['device_type']
@@ -555,10 +685,14 @@ def activate_device(device_serial, api_key):
         # Update device in backend
         click.echo("☁️  Updating device in NativeBridge...")
 
+        # Update connection mode in device details
+        device_details = existing_device['device_details']
+        device_details['connection_mode'] = 'WiFi' if ADBDeviceManager.is_wifi_connection(device_serial) else 'USB'
+
         device_data = {
             'device_serial': device_serial,
             'device_type': device_type,
-            'device_details': existing_device['device_details'],
+            'device_details': device_details,
             'tunnel_url': tunnel_url,
             'device_state': 'active',
         }
@@ -579,11 +713,20 @@ def activate_device(device_serial, api_key):
         click.echo(f"Device {device_serial} is now active!")
         click.echo(f"Connect from anywhere:")
         click.echo(f"  adb connect {tunnel_url}")
-        click.echo(f"\n💡 Health monitoring is active - disconnected devices will be auto-deactivated")
-        click.echo(f"\n⚠️  SECURITY WARNING:")
-        click.echo(f"   Treat this tunnel URL as a SECRET!")
-        click.echo(f"   Anyone with this URL can connect to your device.")
-        click.echo(f"   Deactivate when not in use: bridgelink devices deactivate {device_serial}\n")
+
+        # Show dashboard URL
+        dashboard_url = api_client.get_dashboard_url()
+        click.echo(f"\n🌐 Manage device in NativeBridge Dashboard:")
+        click.echo(f"   {dashboard_url}")
+        click.echo(f"   → View device status, start remote sessions, and control your device")
+
+        click.echo(click.style("\n💡 Health monitoring is active", fg='yellow', bold=True) +
+                   click.style(" - disconnected devices will be auto-deactivated", fg='yellow'))
+        click.echo(click.style("\n⚠️  SECURITY WARNING:", fg='yellow', bold=True))
+        click.echo(click.style("   Treat this tunnel URL as a SECRET!", fg='yellow'))
+        click.echo(click.style("   Anyone with this URL can connect to your device.", fg='yellow'))
+        click.echo(click.style("   Deactivate when not in use: ", fg='yellow') +
+                   click.style(f"bridgelink devices deactivate {device_serial}", fg='white', bold=True) + "\n")
 
     except Exception as e:
         click.echo(f"❌ Error activating device: {e}", err=True)

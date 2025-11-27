@@ -45,6 +45,13 @@ class DeviceInfo:
     manufacturer: str
     product: str
     device_name: str
+    # Additional device details
+    security_patch: str = ""
+    cpu: str = ""
+    ram_gb: str = ""
+    storage_gb: str = ""
+    resolution: str = ""
+    density_dpi: str = ""
 
 class NativeBridgeAPI:
     """API client for NativeBridge backend"""
@@ -156,7 +163,7 @@ class NativeBridgeAPI:
 
 class ADBDeviceManager:
     """Manages ADB device connections"""
-    
+
     @staticmethod
     def list_devices() -> List[str]:
         """List all connected ADB devices"""
@@ -167,18 +174,188 @@ class ADBDeviceManager:
                 text=True,
                 check=True
             )
-            
+
             devices = []
             for line in result.stdout.strip().split('\n')[1:]:
                 if '\t' in line:
                     serial, status = line.split('\t')
                     if status == 'device':
                         devices.append(serial)
-            
+
             return devices
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to list ADB devices: {e}")
             return []
+
+    @staticmethod
+    def list_usb_devices() -> List[str]:
+        """List only USB-connected devices (excludes WiFi connections)"""
+        try:
+            devices = ADBDeviceManager.list_devices()
+            # Filter out IP addresses (WiFi connections look like 192.168.1.15:5555)
+            usb_devices = [d for d in devices if not (':' in d and d.split(':')[0].replace('.', '').isdigit())]
+            return usb_devices
+        except Exception as e:
+            logger.error(f"Failed to list USB devices: {e}")
+            return []
+
+    @staticmethod
+    def get_device_ip_address(serial: str) -> Optional[str]:
+        """
+        Get the IP address of a USB-connected device
+
+        Args:
+            serial: Device serial number (USB connection)
+
+        Returns:
+            IP address string or None if not found
+        """
+        try:
+            # Get IP address using adb shell
+            result = subprocess.run(
+                ["adb", "-s", serial, "shell", "ip", "route"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if result.returncode != 0:
+                return None
+
+            # Parse output to find IP address
+            # Looking for line like: "192.168.1.0/24 dev wlan0 proto kernel scope link src 192.168.1.15"
+            for line in result.stdout.strip().split('\n'):
+                if 'src' in line:
+                    parts = line.split()
+                    try:
+                        src_index = parts.index('src')
+                        if src_index + 1 < len(parts):
+                            ip_address = parts[src_index + 1]
+                            # Validate IP format
+                            if ip_address.count('.') == 3:
+                                return ip_address
+                    except (ValueError, IndexError):
+                        continue
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to get device IP: {e}")
+            return None
+
+    @staticmethod
+    def enable_tcpip_mode(serial: str, port: int = 5555) -> bool:
+        """
+        Enable ADB over TCP/IP mode on device
+
+        Args:
+            serial: Device serial number (USB connection)
+            port: TCP port to use (default: 5555)
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            result = subprocess.run(
+                ["adb", "-s", serial, "tcpip", str(port)],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if result.returncode != 0:
+                return False
+
+            # Wait for device to restart in TCP mode
+            time.sleep(3)
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to enable TCP/IP mode: {e}")
+            return False
+
+    @staticmethod
+    def connect_wifi(ip_address: str, port: int = 5555) -> bool:
+        """
+        Connect to device via WiFi
+
+        Args:
+            ip_address: Device IP address
+            port: TCP port (default: 5555)
+
+        Returns:
+            True if connected successfully, False otherwise
+        """
+        try:
+            # Disconnect first if already connected (to force fresh connection)
+            subprocess.run(
+                ["adb", "disconnect", f"{ip_address}:{port}"],
+                capture_output=True,
+                timeout=5
+            )
+
+            # Connect to device
+            result = subprocess.run(
+                ["adb", "connect", f"{ip_address}:{port}"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if result.returncode != 0:
+                return False
+
+            # Check if connection was successful
+            # Output should contain "connected to" or "already connected"
+            output_lower = result.stdout.lower()
+            if "connected to" in output_lower or "already connected" in output_lower:
+                time.sleep(2)  # Wait for connection to stabilize
+                return True
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Failed to connect via WiFi: {e}")
+            return False
+
+    @staticmethod
+    def disconnect_wifi(ip_address: str, port: int = 5555) -> bool:
+        """
+        Disconnect from WiFi device
+
+        Args:
+            ip_address: Device IP address
+            port: TCP port (default: 5555)
+
+        Returns:
+            True if disconnected successfully, False otherwise
+        """
+        try:
+            result = subprocess.run(
+                ["adb", "disconnect", f"{ip_address}:{port}"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            return result.returncode == 0
+        except Exception as e:
+            logger.error(f"Failed to disconnect WiFi: {e}")
+            return False
+
+    @staticmethod
+    def is_wifi_connection(serial: str) -> bool:
+        """
+        Check if a device serial represents a WiFi connection
+
+        Args:
+            serial: Device serial (can be serial number or IP:port)
+
+        Returns:
+            True if WiFi connection, False if USB
+        """
+        # WiFi connections look like: 192.168.1.15:5555
+        # USB connections look like: 1d752b81
+        return ':' in serial and serial.split(':')[0].replace('.', '').isdigit()
     
     @staticmethod
     def get_device_info(serial: str) -> Optional[DeviceInfo]:
@@ -192,15 +369,97 @@ class ADBDeviceManager:
                     check=True
                 )
                 return result.stdout.strip()
-            
+
+            def get_shell_output(command):
+                """Execute shell command and return output"""
+                result = subprocess.run(
+                    ["adb", "-s", serial, "shell", command],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                return result.stdout.strip() if result.returncode == 0 else ""
+
+            # Basic device info
+            model = get_prop("ro.product.model")
+            android_version = get_prop("ro.build.version.release")
+            sdk_version = get_prop("ro.build.version.sdk")
+            manufacturer = get_prop("ro.product.manufacturer")
+            product = get_prop("ro.product.name")
+            device_name = get_prop("ro.product.device")
+
+            # Additional device details
+            security_patch = get_prop("ro.build.version.security_patch")
+
+            # CPU/ABI
+            cpu = get_prop("ro.product.cpu.abi")
+
+            # RAM (in GB)
+            ram_gb = ""
+            try:
+                # Get total memory in KB, convert to GB
+                meminfo = get_shell_output("cat /proc/meminfo | grep MemTotal")
+                if meminfo:
+                    # Format: "MemTotal:       11234567 kB"
+                    kb = int(meminfo.split()[1])
+                    ram_gb = f"{kb / (1024 * 1024):.2f}"
+            except:
+                pass
+
+            # Storage (in GB)
+            storage_gb = ""
+            try:
+                # Get internal storage size
+                storage_info = get_shell_output("df /data | tail -1")
+                if storage_info:
+                    # Format: "/dev/block/... 234567890 ... ..."
+                    parts = storage_info.split()
+                    if len(parts) >= 2:
+                        kb = int(parts[1])
+                        storage_gb = f"{kb / (1024 * 1024):.0f}"
+            except:
+                pass
+
+            # Resolution
+            resolution = ""
+            try:
+                wm_size = get_shell_output("wm size")
+                if "Physical size:" in wm_size:
+                    # Format: "Physical size: 1440x3088"
+                    resolution = wm_size.split("Physical size:")[-1].strip()
+                elif wm_size:
+                    # Format: "1440x3088"
+                    resolution = wm_size.strip()
+            except:
+                pass
+
+            # Density DPI
+            density_dpi = ""
+            try:
+                wm_density = get_shell_output("wm density")
+                if "Physical density:" in wm_density:
+                    # Format: "Physical density: 450"
+                    density_dpi = wm_density.split("Physical density:")[-1].strip()
+                elif wm_density:
+                    # Format: "450"
+                    density_dpi = wm_density.strip()
+            except:
+                pass
+
             return DeviceInfo(
                 serial=serial,
-                model=get_prop("ro.product.model"),
-                android_version=get_prop("ro.build.version.release"),
-                sdk_version=get_prop("ro.build.version.sdk"),
-                manufacturer=get_prop("ro.product.manufacturer"),
-                product=get_prop("ro.product.name"),
-                device_name=get_prop("ro.product.device")
+                model=model,
+                android_version=android_version,
+                sdk_version=sdk_version,
+                manufacturer=manufacturer,
+                product=product,
+                device_name=device_name,
+                security_patch=security_patch,
+                cpu=cpu,
+                ram_gb=ram_gb,
+                storage_gb=storage_gb,
+                resolution=resolution,
+                density_dpi=density_dpi
             )
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to get device info: {e}")
