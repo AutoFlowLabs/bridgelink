@@ -9,8 +9,14 @@ Complete documentation for BridgeLink - NativeBridge CLI tool for remote Android
 ### Getting Started
 - **[Main README](../README.md)** - Quick start and overview
 - **[Quick Start Guide](QUICK_START.md)** - Quick command reference
+- **[NativeBridge Dashboard](https://nativebridge.io/dashboard/bridgelink)** - Manage devices via web browser 🌐
 - **[Local Testing Guide](LOCAL_TESTING_GUIDE.md)** - Test locally before PyPI release
 - **[Security Guide](SECURITY.md)** - Security best practices ⚠️ **IMPORTANT**
+
+### Feature Guides
+- **[WiFi Connection Guide](WIFI_CONNECTION_GUIDE.md)** - Wireless ADB setup and usage 📡 **NEW**
+- **[Auto-Activation Feature](AUTO_ACTIVATION_FEATURE.md)** - Automatic device reconnection 🔄
+- **[Dashboard Integration](https://nativebridge.io/dashboard/bridgelink)** - Web-based device management and remote sessions 🎮
 
 ### Command Guides
 - **[Complete Command Reference](#complete-command-reference)** - All commands with examples

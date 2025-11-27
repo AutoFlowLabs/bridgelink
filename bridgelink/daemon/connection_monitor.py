@@ -136,14 +136,17 @@ class DeviceConnectionMonitor:
             device_type = device_info.get('device_type', 'physical')
 
             # Setup ADB TCP mode
-            print(f"   Setting up ADB TCP mode...")
-            adb_port = self.tunnel_manager.setup_adb_tcp(device_serial)
+            print(f"   Setting up ADB port forwarding...")
+            # Check if this is a WiFi connection
+            from bridgelink.utils.adb import ADBDeviceManager
+            is_wifi_conn = ADBDeviceManager.is_wifi_connection(device_serial)
+            adb_port = self.tunnel_manager.setup_adb_tcp(device_serial, is_wifi=is_wifi_conn)
 
             if not adb_port:
-                print(f"   ❌ Failed to setup ADB TCP mode")
+                print(f"   ❌ Failed to setup ADB port forwarding")
                 return False
 
-            print(f"   ADB TCP port: {adb_port}")
+            print(f"   Local ADB port: {adb_port}")
 
             # Create bore tunnel
             print(f"   Creating bore tunnel...")
