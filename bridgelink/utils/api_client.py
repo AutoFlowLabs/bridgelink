@@ -5,11 +5,20 @@ Handles all API communication with the NativeBridge backend
 
 import requests
 import os
+import time
+import logging
 from typing import Optional, Dict, Any
+from requests.exceptions import ConnectionError, Timeout, RequestException
+
+logger = logging.getLogger(__name__)
 
 
 class APIClient:
     """Client for NativeBridge API"""
+
+    MAX_RETRIES = 3
+    BACKOFF_BASE = 1  # seconds
+    RETRYABLE_STATUS_CODES = {502, 503, 504, 429}
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
         self.api_key = api_key or os.getenv('NB_API_KEY')
@@ -23,6 +32,63 @@ class APIClient:
                 "API key not provided. Set NB_API_KEY environment variable "
                 "or pass api_key parameter"
             )
+
+    def _request_with_retry(self, method: str, url: str, **kwargs) -> requests.Response:
+        """
+        Execute an HTTP request with exponential backoff retry.
+
+        Retries on:
+          - ConnectionError (network unreachable, DNS failure)
+          - Timeout (server didn't respond in time)
+          - 502/503/504 (upstream server errors)
+          - 429 (rate limited — respects Retry-After header)
+
+        Args:
+            method: HTTP method (get, post, patch, delete)
+            url: Request URL
+            **kwargs: Passed to requests.request()
+
+        Returns:
+            requests.Response
+
+        Raises:
+            RequestException: After all retries exhausted
+        """
+        last_exception = None
+
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                response = requests.request(method, url, **kwargs)
+
+                # Don't retry client errors (4xx) except 429
+                if response.status_code not in self.RETRYABLE_STATUS_CODES:
+                    return response
+
+                # Rate limited — respect Retry-After header if present
+                if response.status_code == 429:
+                    wait = int(response.headers.get('Retry-After', self.BACKOFF_BASE * (2 ** attempt)))
+                else:
+                    wait = self.BACKOFF_BASE * (2 ** attempt)
+
+                logger.warning(
+                    f"Request to {url} returned {response.status_code}, "
+                    f"retrying in {wait}s (attempt {attempt + 1}/{self.MAX_RETRIES})"
+                )
+                time.sleep(wait)
+
+            except (ConnectionError, Timeout) as e:
+                last_exception = e
+                wait = self.BACKOFF_BASE * (2 ** attempt)
+                logger.warning(
+                    f"Request to {url} failed: {e}, "
+                    f"retrying in {wait}s (attempt {attempt + 1}/{self.MAX_RETRIES})"
+                )
+                time.sleep(wait)
+
+        # All retries exhausted
+        if last_exception:
+            raise last_exception
+        return response  # Return last response even if bad status
 
     def get_dashboard_url(self) -> str:
         """
@@ -52,7 +118,8 @@ class APIClient:
     def validate_api_key(self) -> Dict[str, Any]:
         """Validate the API key and get user information"""
         url = f"{self.base_url}/v1/bore/validate-api-key"
-        response = requests.post(
+        response = self._request_with_retry(
+            'post',
             url,
             json={'api_key': self.api_key},
             timeout=10
@@ -85,7 +152,8 @@ class APIClient:
             API response data
         """
         url = f"{self.base_url}/v1/bridgelink/devices"
-        response = requests.post(
+        response = self._request_with_retry(
+            'post',
             url,
             headers=self._get_headers(),
             json=device_data,
@@ -109,7 +177,8 @@ class APIClient:
             API response data
         """
         url = f"{self.base_url}/v1/bridgelink/devices/{device_serial}/state"
-        response = requests.patch(
+        response = self._request_with_retry(
+            'patch',
             url,
             headers=self._get_headers(),
             json={'state': state},
@@ -132,7 +201,8 @@ class APIClient:
             Device data or None if not found
         """
         url = f"{self.base_url}/v1/bridgelink/devices/{device_serial}"
-        response = requests.get(
+        response = self._request_with_retry(
+            'get',
             url,
             headers=self._get_headers(),
             timeout=10
@@ -154,7 +224,8 @@ class APIClient:
             List of device data dictionaries
         """
         url = f"{self.base_url}/v1/bridgelink/devices"
-        response = requests.get(
+        response = self._request_with_retry(
+            'get',
             url,
             headers=self._get_headers(),
             timeout=10
@@ -184,7 +255,8 @@ class APIClient:
             API response data
         """
         url = f"{self.base_url}/v1/bridgelink/devices/{device_serial}"
-        response = requests.delete(
+        response = self._request_with_retry(
+            'delete',
             url,
             headers=self._get_headers(),
             timeout=10
@@ -207,7 +279,8 @@ class APIClient:
             API response data
         """
         url = f"{self.base_url}/v1/bridgelink/devices/{device_serial}/auto-activate"
-        response = requests.patch(
+        response = self._request_with_retry(
+            'patch',
             url,
             headers=self._get_headers(),
             json={'auto_activate': auto_activate},
@@ -227,7 +300,8 @@ class APIClient:
             List of device data dictionaries
         """
         url = f"{self.base_url}/v1/bridgelink/devices/auto-activate/candidates"
-        response = requests.get(
+        response = self._request_with_retry(
+            'get',
             url,
             headers=self._get_headers(),
             timeout=10
